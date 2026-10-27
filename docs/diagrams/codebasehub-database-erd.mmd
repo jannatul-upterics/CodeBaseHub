@@ -1,0 +1,79 @@
+---
+title: CodeBaseHub — Database Architecture
+---
+erDiagram
+
+    users {
+        bigint id PK
+        string name
+        string email UK
+        timestamp email_verified_at "nullable"
+        string password
+        string remember_token "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    sessions {
+        string id PK
+        bigint user_id FK "nullable"
+        string ip_address "nullable, max:45"
+        text user_agent "nullable"
+        longtext payload
+        int last_activity
+    }
+
+    password_reset_tokens {
+        string email PK
+        string token
+        timestamp created_at "nullable"
+    }
+
+    websites {
+        bigint id PK
+        string website_name
+        string template_name
+        string domain
+        text description "nullable"
+        string repository_url "nullable"
+        string deployment_url "nullable"
+        text notes "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    jobs {
+        bigint id PK
+        string queue
+        longtext payload
+        smallint attempts
+        int reserved_at "nullable"
+        int available_at
+        int created_at
+    }
+
+    job_batches {
+        string id PK
+        string name
+        int total_jobs
+        int pending_jobs
+        int failed_jobs
+        longtext failed_job_ids
+        mediumtext options "nullable"
+        int cancelled_at "nullable"
+        int created_at
+        int finished_at "nullable"
+    }
+
+    failed_jobs {
+        bigint id PK
+        string uuid UK
+        string connection
+        string queue
+        longtext payload
+        longtext exception
+        timestamp failed_at
+    }
+
+    users ||--o{ sessions : "has many"
+    users ||--o{ password_reset_tokens : "requests"

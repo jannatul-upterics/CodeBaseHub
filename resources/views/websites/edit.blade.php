@@ -1,0 +1,205 @@
+@extends('layouts.dashboard')
+
+@section('title', 'Edit — ' . $website->website_name)
+@section('breadcrumb', 'Edit Website')
+
+@section('content')
+{{-- Page Header --}}
+<div class="cbh-page-header">
+    <div style="display:flex;align-items:center;gap:0.75rem;">
+        <a href="{{ route('websites.show', $website) }}"
+           class="cbh-btn cbh-btn-secondary cbh-btn-icon"
+           title="Back to website">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+            <h1 class="cbh-page-title">Edit Website</h1>
+            <p class="cbh-page-subtitle">{{ $website->website_name }} — update configuration.</p>
+        </div>
+    </div>
+</div>
+
+<form method="POST" action="{{ route('websites.update', $website) }}" id="editWebsiteForm">
+    @csrf
+    @method('PUT')
+
+    <div class="row g-4">
+        {{-- Main Fields --}}
+        <div class="col-12 col-lg-8">
+            <div class="cbh-card">
+                <div class="cbh-card-header">
+                    <div>
+                        <h2 class="cbh-card-title">Website Details</h2>
+                        <p class="cbh-card-subtitle">Update this website's core information.</p>
+                    </div>
+                    <span class="cbh-badge cbh-badge-neutral">#CBH-{{ str_pad($website->id, 4, '0', STR_PAD_LEFT) }}</span>
+                </div>
+                <div class="cbh-card-body">
+                    {{-- Website Name --}}
+                    <div class="cbh-form-group">
+                        <label for="website_name" class="cbh-label">
+                            Website Name <span class="required">*</span>
+                        </label>
+                        <input type="text"
+                               id="website_name"
+                               name="website_name"
+                               value="{{ old('website_name', $website->website_name) }}"
+                               class="cbh-input {{ $errors->has('website_name') ? 'is-invalid' : '' }}"
+                               placeholder="e.g. Acme Corporate Site"
+                               required
+                               autocomplete="off">
+                        @error('website_name')
+                            <p class="cbh-field-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Domain --}}
+                    <div class="cbh-form-group">
+                        <label for="domain" class="cbh-label">
+                            Primary Domain <span class="required">*</span>
+                        </label>
+                        <input type="text"
+                               id="domain"
+                               name="domain"
+                               value="{{ old('domain', $website->domain) }}"
+                               class="cbh-input {{ $errors->has('domain') ? 'is-invalid' : '' }}"
+                               placeholder="e.g. acme.com"
+                               required>
+                        <p class="cbh-field-hint">Enter the bare domain without http:// or www.</p>
+                        @error('domain')
+                            <p class="cbh-field-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Description --}}
+                    <div class="cbh-form-group">
+                        <label for="description" class="cbh-label">Description</label>
+                        <textarea id="description"
+                                  name="description"
+                                  class="cbh-textarea {{ $errors->has('description') ? 'is-invalid' : '' }}"
+                                  placeholder="Brief description of this website's purpose…"
+                                  rows="3">{{ old('description', $website->description) }}</textarea>
+                        @error('description')
+                            <p class="cbh-field-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Notes --}}
+                    <div class="cbh-form-group" style="margin-bottom:0;">
+                        <label for="notes" class="cbh-label">Internal Notes</label>
+                        <textarea id="notes"
+                                  name="notes"
+                                  class="cbh-textarea {{ $errors->has('notes') ? 'is-invalid' : '' }}"
+                                  placeholder="Technical notes, deployment info, caveats…"
+                                  rows="3">{{ old('notes', $website->notes) }}</textarea>
+                        @error('notes')
+                            <p class="cbh-field-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Side Panel --}}
+        <div class="col-12 col-lg-4">
+
+            {{-- Provider & Customer --}}
+            <div class="cbh-card mb-4">
+                <div class="cbh-card-header">
+                    <h2 class="cbh-card-title">Configuration</h2>
+                </div>
+                <div class="cbh-card-body">
+                    {{-- Provider --}}
+                    <div class="cbh-form-group">
+                        <label for="provider" class="cbh-label">
+                            Hosting Provider <span class="required">*</span>
+                        </label>
+                        <select id="provider"
+                                name="provider"
+                                class="cbh-select {{ $errors->has('provider') ? 'is-invalid' : '' }}"
+                                required>
+                            <option value="">Select provider…</option>
+                            @foreach(['cloud', 'aws', 'forge', 'digitalocean', 'vercel', 'netlify', 'other'] as $pv)
+                                <option value="{{ $pv }}" {{ old('provider', $website->provider) === $pv ? 'selected' : '' }}>
+                                    {{ ucfirst($pv) }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('provider')
+                            <p class="cbh-field-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Customer --}}
+                    <div class="cbh-form-group" style="margin-bottom:0;">
+                        <label for="customer_id" class="cbh-label">Customer</label>
+                        <select id="customer_id"
+                                name="customer_id"
+                                class="cbh-select {{ $errors->has('customer_id') ? 'is-invalid' : '' }}">
+                            <option value="">No customer assigned</option>
+                            @foreach ($customers as $customer)
+                                <option value="{{ $customer->id }}"
+                                        {{ old('customer_id', $website->customer_id) == $customer->id ? 'selected' : '' }}>
+                                    {{ $customer->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('customer_id')
+                            <p class="cbh-field-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+
+            {{-- Status --}}
+            <div class="cbh-card mb-4">
+                <div class="cbh-card-header">
+                    <h2 class="cbh-card-title">Status</h2>
+                </div>
+                <div class="cbh-card-body">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div>
+                            <div style="font-size:0.875rem;font-weight:600;color:var(--cbh-neutral-700);">Active</div>
+                            <div style="font-size:0.78rem;color:var(--cbh-neutral-500);">Website is live and visible</div>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   role="switch"
+                                   id="statusToggle"
+                                   name="status"
+                                   value="1"
+                                   {{ old('status', $website->status) == 1 ? 'checked' : '' }}>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Meta info --}}
+            <div class="cbh-card mb-4" style="font-size:0.8rem;">
+                <div class="cbh-card-body" style="display:flex;flex-direction:column;gap:0.5rem;">
+                    <div style="display:flex;justify-content:space-between;padding-bottom:0.375rem;border-bottom:1px solid var(--cbh-border);">
+                        <span class="cbh-text-muted">Created</span>
+                        <span>{{ $website->created_at?->format('M j, Y') ?? '—' }}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;">
+                        <span class="cbh-text-muted">Last updated</span>
+                        <span>{{ $website->updated_at?->diffForHumans() ?? '—' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Submit --}}
+            <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                <button type="submit" class="cbh-btn cbh-btn-primary" style="justify-content:center;">
+                    <i class="bi bi-check-lg"></i>
+                    Save Changes
+                </button>
+                <a href="{{ route('websites.show', $website) }}" class="cbh-btn cbh-btn-secondary" style="justify-content:center;">
+                    Cancel
+                </a>
+            </div>
+        </div>
+    </div>
+</form>
+@endsection
