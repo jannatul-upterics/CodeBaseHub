@@ -16,6 +16,15 @@
                 @else
                     <span class="cbh-badge cbh-badge-neutral">Inactive</span>
                 @endif
+                @if ($website->provisioning_status === 'provisioned')
+                    <span class="cbh-badge cbh-badge-success"><i class="bi bi-database-check"></i> Provisioned</span>
+                @elseif ($website->provisioning_status === 'failed')
+                    <span class="cbh-badge cbh-badge-danger"><i class="bi bi-database-exclamation"></i> Provisioning Failed</span>
+                @elseif ($website->provisioning_status === 'provisioning')
+                    <span class="cbh-badge cbh-badge-info"><i class="bi bi-arrow-repeat"></i> Provisioning</span>
+                @else
+                    <span class="cbh-badge cbh-badge-warning"><i class="bi bi-database-dash"></i> Pending Provisioning</span>
+                @endif
                 <span class="cbh-badge cbh-badge-neutral">#CBH-{{ str_pad($website->id, 4, '0', STR_PAD_LEFT) }}</span>
             </div>
             <p class="cbh-page-subtitle">

@@ -36,6 +36,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('customers', CustomerController::class);
 
     // 3. Websites
+    Route::post('/websites/test-database-connection', [WebsiteController::class, 'testDatabaseConnection'])->name('websites.test_database');
+    Route::post('/websites/{website}/retry-provisioning', [WebsiteController::class, 'retryProvisioning'])->name('websites.retry_provisioning');
     Route::resource('websites', WebsiteController::class);
     Route::post('/websites/{website}/theme', [WebsiteController::class, 'assignTheme'])->name('websites.theme');
 

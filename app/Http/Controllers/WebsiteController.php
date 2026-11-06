@@ -9,10 +9,14 @@ use App\Models\Domain;
 use App\Models\Theme;
 use App\Models\Website;
 use App\Models\WebsiteThemeSetting;
+use App\Services\WebsiteProvisioningService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
+use Throwable;
 
 class WebsiteController extends Controller
 {
@@ -26,7 +30,7 @@ class WebsiteController extends Controller
         $provider = trim((string) $request->query('provider', ''));
         $template = trim((string) $request->query('template', ''));
 
-        $query = Website::query()->with(['customer', 'primaryDomain', 'themes']);
+        $query = Website::query()->with(['customer', 'primaryDomain', 'themes', 'databaseConnection']);
 
         if ($search !== '') {
             $query->where(function (Builder $builder) use ($search): void {
@@ -81,11 +85,34 @@ class WebsiteController extends Controller
     /**
      * Store a newly created website in storage.
      */
-    public function store(StoreWebsiteRequest $request): RedirectResponse
-    {
+    public function store(
+        StoreWebsiteRequest $request,
+        WebsiteProvisioningService $provisioningService
+    ): RedirectResponse {
         $data = $request->validated();
         $themeId = $data['theme_id'] ?? null;
         unset($data['theme_id']);
+
+        $tenantDbMode = $data['tenant_db_mode'] ?? null;
+        $dbConfig = [
+            'driver' => 'mysql',
+            'host' => $data['db_host'] ?? config('database.connections.mysql.host', '127.0.0.1'),
+            'port' => (int) ($data['db_port'] ?? config('database.connections.mysql.port', 3306)),
+            'database' => $data['db_name'] ?? null,
+            'username' => $data['db_username'] ?? config('database.connections.mysql.username', 'root'),
+            'password' => $data['db_password'] ?? '',
+        ];
+        $runMigrations = (bool) ($data['run_migrations'] ?? true);
+
+        unset(
+            $data['tenant_db_mode'],
+            $data['db_host'],
+            $data['db_port'],
+            $data['db_name'],
+            $data['db_username'],
+            $data['db_password'],
+            $data['run_migrations']
+        );
 
         $website = Website::create($data);
 
@@ -110,6 +137,29 @@ class WebsiteController extends Controller
             ]
         );
 
+        if ($tenantDbMode) {
+            try {
+                if ($tenantDbMode === 'connect') {
+                    $provisioningService->connectExistingDatabase($website, $dbConfig, $runMigrations);
+                } else {
+                    $provisioningService->provisionNewDatabase($website, $dbConfig);
+                }
+
+                return redirect()
+                    ->route('websites.index')
+                    ->with('success', "Website '{$website->website_name}' created and tenant database provisioned successfully.");
+            } catch (Throwable $e) {
+                Log::error('Website tenant provisioning failed on store', [
+                    'website_id' => $website->id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return redirect()
+                    ->route('websites.show', $website)
+                    ->with('warning', "Website '{$website->website_name}' was registered, but tenant database provisioning failed: {$e->getMessage()}. You can retry provisioning below.");
+            }
+        }
+
         return redirect()
             ->route('websites.index')
             ->with('success', "Website '{$website->website_name}' created successfully.");
@@ -120,7 +170,7 @@ class WebsiteController extends Controller
      */
     public function show(Website $website): View
     {
-        $website->load(['customer', 'domains', 'pages', 'themeSettings.theme', 'settings', 'metadata']);
+        $website->load(['customer', 'domains', 'pages', 'themeSettings.theme', 'settings', 'metadata', 'databaseConnection']);
         $allThemes = Theme::where('status', 1)->orderBy('theme_name')->get();
 
         return view('websites.show', compact('website', 'allThemes'));
@@ -200,5 +250,66 @@ class WebsiteController extends Controller
         return redirect()
             ->route('websites.index')
             ->with('success', "Website '{$name}' deleted successfully.");
+    }
+
+    /**
+     * Test database connection before saving.
+     */
+    public function testDatabaseConnection(
+        Request $request,
+        WebsiteProvisioningService $provisioningService
+    ): JsonResponse {
+        $validated = $request->validate([
+            'mode' => ['required', 'string', 'in:create,connect'],
+            'host' => ['required', 'string'],
+            'port' => ['nullable', 'integer', 'between:1,65535'],
+            'database' => ['nullable', 'string', 'max:64', 'regex:/^[a-zA-Z0-9_]+$/'],
+            'username' => ['required', 'string'],
+            'password' => ['nullable', 'string'],
+        ]);
+
+        $config = [
+            'driver' => 'mysql',
+            'host' => $validated['host'],
+            'port' => (int) ($validated['port'] ?? 3306),
+            'database' => $validated['database'] ?? null,
+            'username' => $validated['username'],
+            'password' => $validated['password'] ?? '',
+        ];
+
+        $result = $provisioningService->testConnection($config, $validated['mode']);
+
+        return response()->json($result, $result['success'] ? 200 : 422);
+    }
+
+    /**
+     * Retry tenant database provisioning for a website.
+     */
+    public function retryProvisioning(
+        Request $request,
+        Website $website,
+        WebsiteProvisioningService $provisioningService
+    ): RedirectResponse {
+        $validated = $request->validate([
+            'tenant_db_mode' => ['nullable', 'string', 'in:create,connect'],
+            'db_host' => ['nullable', 'string'],
+            'db_port' => ['nullable', 'integer', 'between:1,65535'],
+            'db_name' => ['nullable', 'string', 'max:64', 'regex:/^[a-zA-Z0-9_]+$/'],
+            'db_username' => ['nullable', 'string'],
+            'db_password' => ['nullable', 'string'],
+            'run_migrations' => ['nullable', 'boolean'],
+        ]);
+
+        try {
+            $provisioningService->retryProvisioning($website, $validated);
+
+            return redirect()
+                ->route('websites.show', $website)
+                ->with('success', "Tenant database for '{$website->website_name}' provisioned successfully.");
+        } catch (Throwable $e) {
+            return redirect()
+                ->route('websites.show', $website)
+                ->with('error', 'Tenant database provisioning failed: '.$e->getMessage());
+        }
     }
 }

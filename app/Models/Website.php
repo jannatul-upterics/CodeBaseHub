@@ -37,6 +37,7 @@ class Website extends Model
         'status',
         'provider',
         'template_name',
+        'provisioning_status',
     ];
 
     /**
@@ -141,6 +142,71 @@ class Website extends Model
         return $this->belongsToMany(Theme::class, 'website_theme_settings', 'website_id', 'theme_id')
             ->withPivot(['setting_key', 'setting_value'])
             ->withTimestamps();
+    }
+
+    /**
+     * Get the tenant database connection associated with this website.
+     *
+     * @return HasOne<WebsiteDatabaseConnection, $this>
+     */
+    public function databaseConnection(): HasOne
+    {
+        return $this->hasOne(WebsiteDatabaseConnection::class, 'website_id');
+    }
+
+    /**
+     * Check if the tenant database is provisioned.
+     */
+    public function isProvisioned(): bool
+    {
+        return $this->provisioning_status === 'provisioned';
+    }
+
+    /**
+     * Check if tenant database provisioning failed.
+     */
+    public function isProvisioningFailed(): bool
+    {
+        return $this->provisioning_status === 'failed';
+    }
+
+    /**
+     * Check if tenant database provisioning is currently underway.
+     */
+    public function isProvisioning(): bool
+    {
+        return $this->provisioning_status === 'provisioning';
+    }
+
+    /**
+     * Check if tenant database provisioning is pending.
+     */
+    public function isProvisioningPending(): bool
+    {
+        return $this->provisioning_status === 'pending';
+    }
+
+    /**
+     * Retrieve the last recorded provisioning error, if any.
+     */
+    public function getProvisioningError(): ?string
+    {
+        return $this->settings()->where('setting_key', 'provisioning_error')->value('setting_value');
+    }
+
+    /**
+     * Store or clear the provisioning error for this website.
+     */
+    public function setProvisioningError(?string $error): void
+    {
+        if ($error === null || $error === '') {
+            $this->settings()->where('setting_key', 'provisioning_error')->delete();
+        } else {
+            $this->settings()->updateOrCreate(
+                ['setting_key' => 'provisioning_error'],
+                ['setting_value' => $error]
+            );
+        }
     }
 
     /**

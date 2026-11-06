@@ -165,14 +165,38 @@
 
                         {{-- Status --}}
                         <td>
-                            @if ($website->status === 1)
-                                <span class="cbh-badge cbh-badge-success">
-                                    <i class="bi bi-circle-fill" style="font-size:0.4rem;"></i>
-                                    Active
-                                </span>
-                            @else
-                                <span class="cbh-badge cbh-badge-neutral">Inactive</span>
-                            @endif
+                            <div>
+                                @if ($website->status === 1)
+                                    <span class="cbh-badge cbh-badge-success">
+                                        <i class="bi bi-circle-fill" style="font-size:0.4rem;"></i>
+                                        Active
+                                    </span>
+                                @else
+                                    <span class="cbh-badge cbh-badge-neutral">Inactive</span>
+                                @endif
+                            </div>
+                            <div style="margin-top:0.35rem;">
+                                @if ($website->provisioning_status === 'provisioned')
+                                    <span class="cbh-badge cbh-badge-success" title="Tenant database provisioned">
+                                        <i class="bi bi-database-check"></i> Provisioned
+                                    </span>
+                                @elseif ($website->provisioning_status === 'failed')
+                                    <a href="{{ route('websites.show', $website) }}"
+                                       class="cbh-badge cbh-badge-danger"
+                                       style="text-decoration:none;"
+                                       title="Provisioning failed. Click to view details and retry.">
+                                        <i class="bi bi-database-exclamation"></i> Failed
+                                    </a>
+                                @elseif ($website->provisioning_status === 'provisioning')
+                                    <span class="cbh-badge cbh-badge-info" title="Tenant database is provisioning">
+                                        <i class="bi bi-arrow-repeat spin"></i> Provisioning
+                                    </span>
+                                @else
+                                    <span class="cbh-badge cbh-badge-warning" title="Tenant database pending provisioning">
+                                        <i class="bi bi-database-dash"></i> Pending
+                                    </span>
+                                @endif
+                            </div>
                         </td>
 
                         {{-- Date --}}

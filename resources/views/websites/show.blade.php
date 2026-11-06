@@ -6,6 +6,41 @@
 @section('content')
 @include('websites._header', ['activeTab' => 'overview'])
 
+@if ($website->provisioning_status === 'failed')
+    <div class="cbh-alert cbh-alert-danger mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-start gap-3">
+            <i class="bi bi-exclamation-triangle-fill cbh-alert-icon" style="font-size:1.3rem;"></i>
+            <div>
+                <strong style="display:block;font-size:0.95rem;">Tenant Database Provisioning Failed</strong>
+                <p class="mb-0" style="font-size:0.875rem;">
+                    {{ $website->getProvisioningError() ?? 'An error occurred during tenant database provisioning.' }}
+                </p>
+            </div>
+        </div>
+        <form method="POST" action="{{ route('websites.retry_provisioning', $website) }}" class="m-0">
+            @csrf
+            <button type="submit" class="cbh-btn cbh-btn-danger cbh-btn-sm">
+                <i class="bi bi-arrow-clockwise me-1"></i> Retry Provisioning
+            </button>
+        </form>
+    </div>
+@elseif ($website->provisioning_status === 'pending')
+    <div class="cbh-alert cbh-alert-warning mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-database-dash cbh-alert-icon"></i>
+            <div>
+                <strong>Tenant Database Pending:</strong> Database has not been provisioned yet for this website.
+            </div>
+        </div>
+        <form method="POST" action="{{ route('websites.retry_provisioning', $website) }}" class="m-0">
+            @csrf
+            <button type="submit" class="cbh-btn cbh-btn-primary cbh-btn-sm">
+                <i class="bi bi-database-gear me-1"></i> Provision Database
+            </button>
+        </form>
+    </div>
+@endif
+
 <div class="row g-4">
 
     {{-- Left Column --}}
@@ -61,6 +96,84 @@
                     @endif
                 </div>
             </div>
+        </div>
+
+        {{-- Tenant Database Connection --}}
+        <div class="cbh-card mb-4">
+            <div class="cbh-card-header d-flex justify-content-between align-items-center">
+                <h2 class="cbh-card-title mb-0">
+                    <i class="bi bi-database-fill" style="color:var(--cbh-brand-500);margin-right:0.375rem;"></i>
+                    Tenant Database Connection
+                </h2>
+                <div>
+                    @if ($website->provisioning_status === 'provisioned')
+                        <span class="cbh-badge cbh-badge-success">
+                            <i class="bi bi-database-check me-1"></i> Provisioned
+                        </span>
+                    @elseif ($website->provisioning_status === 'failed')
+                        <span class="cbh-badge cbh-badge-danger">
+                            <i class="bi bi-database-exclamation me-1"></i> Failed
+                        </span>
+                    @elseif ($website->provisioning_status === 'provisioning')
+                        <span class="cbh-badge cbh-badge-info">
+                            <i class="bi bi-arrow-repeat spin me-1"></i> Provisioning
+                        </span>
+                    @else
+                        <span class="cbh-badge cbh-badge-warning">
+                            <i class="bi bi-database-dash me-1"></i> Pending
+                        </span>
+                    @endif
+                </div>
+            </div>
+            <div class="cbh-card-body">
+                @if ($website->databaseConnection)
+                    <div class="row g-3">
+                        <div class="col-12 col-sm-6">
+                            <div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--cbh-neutral-400);margin-bottom:0.25rem;">Database Engine</div>
+                            <div style="font-size:0.9rem;font-weight:600;color:var(--cbh-neutral-800);">
+                                <i class="bi bi-server me-1 text-primary"></i>
+                                {{ strtoupper($website->databaseConnection->driver) }}
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--cbh-neutral-400);margin-bottom:0.25rem;">Database Name</div>
+                            <div style="font-size:0.9rem;font-weight:600;color:var(--cbh-neutral-800);font-family:monospace;">
+                                {{ $website->databaseConnection->database }}
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--cbh-neutral-400);margin-bottom:0.25rem;">Host &amp; Port</div>
+                            <div style="font-size:0.875rem;color:var(--cbh-neutral-700);font-family:monospace;">
+                                {{ $website->databaseConnection->host }}:{{ $website->databaseConnection->port }}
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--cbh-neutral-400);margin-bottom:0.25rem;">Database User</div>
+                            <div style="font-size:0.875rem;color:var(--cbh-neutral-700);font-family:monospace;">
+                                {{ $website->databaseConnection->username }}
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    <div class="cbh-empty" style="padding:1.5rem;">
+                        <div class="cbh-empty-icon" style="width:40px;height:40px;font-size:1.1rem;">
+                            <i class="bi bi-database"></i>
+                        </div>
+                        <p class="cbh-empty-title" style="font-size:0.875rem;">No tenant database connection configured.</p>
+                    </div>
+                @endif
+            </div>
+            @if ($website->provisioning_status !== 'provisioned')
+                <div class="cbh-card-footer bg-light border-top p-3 d-flex justify-content-end">
+                    <form method="POST" action="{{ route('websites.retry_provisioning', $website) }}">
+                        @csrf
+                        <button type="submit" class="cbh-btn cbh-btn-primary cbh-btn-sm">
+                            <i class="bi bi-arrow-clockwise me-1"></i>
+                            {{ $website->provisioning_status === 'failed' ? 'Retry Provisioning' : 'Provision Database Now' }}
+                        </button>
+                    </form>
+                </div>
+            @endif
         </div>
 
         {{-- Domains --}}
