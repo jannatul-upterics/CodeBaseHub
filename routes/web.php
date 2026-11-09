@@ -62,6 +62,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/theme', [WebsiteThemeController::class, 'index'])->name('theme.index');
         Route::post('/theme/active', [WebsiteThemeController::class, 'setActiveTheme'])->name('theme.set_active');
         Route::post('/theme/settings', [WebsiteThemeController::class, 'updateSettings'])->name('theme.settings.update');
+        Route::post('/theme/settings/reset', [WebsiteThemeController::class, 'resetSettings'])->name('theme.settings.reset');
 
         // Domains
         Route::get('/domains', [WebsiteDomainController::class, 'index'])->name('domains.index');

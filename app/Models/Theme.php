@@ -32,6 +32,7 @@ class Theme extends Model
         'preview_image',
         'version',
         'status',
+        'appearance',
     ];
 
     /**
@@ -43,6 +44,7 @@ class Theme extends Model
     {
         return [
             'status' => 'integer',
+            'appearance' => 'array',
         ];
     }
 
@@ -65,6 +67,18 @@ class Theme extends Model
     {
         return $this->belongsToMany(Website::class, 'website_theme_settings', 'theme_id', 'website_id')
             ->withPivot(['setting_key', 'setting_value'])
+            ->withTimestamps();
+    }
+
+    /**
+     * Get websites where this theme is set as the active theme.
+     *
+     * @return BelongsToMany<Website, $this>
+     */
+    public function activeWebsites(): BelongsToMany
+    {
+        return $this->belongsToMany(Website::class, 'website_theme_settings', 'theme_id', 'website_id')
+            ->wherePivot('setting_key', 'active_theme')
             ->withTimestamps();
     }
 }

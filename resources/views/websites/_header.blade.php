@@ -48,6 +48,10 @@
             <i class="bi bi-box-arrow-up-right"></i>
             Visit Site
         </a>
+        <a href="{{ route('websites.theme.index', $website) }}" class="cbh-btn cbh-btn-secondary" title="Manage Theme Settings">
+            <i class="bi bi-palette"></i>
+            Theme Settings
+        </a>
         <a href="{{ route('websites.edit', $website) }}" class="cbh-btn cbh-btn-secondary">
             <i class="bi bi-pencil"></i>
             Edit Details

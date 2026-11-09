@@ -30,6 +30,7 @@ class Website extends Model
      */
     protected $fillable = [
         'customer_id',
+        'template_id',
         'website_name',
         'domain',
         'description',
@@ -60,6 +61,16 @@ class Website extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class, 'customer_id');
+    }
+
+    /**
+     * Get the template assigned to this website.
+     *
+     * @return BelongsTo<Template, $this>
+     */
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(Template::class, 'template_id');
     }
 
     /**
@@ -226,11 +237,43 @@ class Website extends Model
     protected ?string $pendingTemplateName = null;
 
     /**
+     * Get a specific theme setting value for this website.
+     */
+    public function getThemeSetting(string $key, ?string $default = null): ?string
+    {
+        return $this->themeSettings->firstWhere('setting_key', $key)?->setting_value ?? $default;
+    }
+
+    /**
+     * Get all theme settings as an associative key => value array.
+     *
+     * @return array<string, string|null>
+     */
+    public function getThemeSettingsMap(): array
+    {
+        return $this->themeSettings->pluck('setting_value', 'setting_key')->toArray();
+    }
+
+    /**
+     * Get the active theme for this website.
+     */
+    public function activeTheme(): ?Theme
+    {
+        $activeSetting = $this->themeSettings->firstWhere('setting_key', 'active_theme');
+
+        if ($activeSetting && $activeSetting->theme) {
+            return $activeSetting->theme;
+        }
+
+        return $this->themes->first() ?? Theme::where('status', 1)->first();
+    }
+
+    /**
      * Provide backwards-compatible accessor for template_name.
      */
     public function getTemplateNameAttribute(): string
     {
-        return $this->themes->first()?->theme_name ?? 'Standard Theme';
+        return $this->template?->template_name ?? $this->themes->first()?->theme_name ?? 'Standard Theme';
     }
 
     /**

@@ -41,6 +41,34 @@
     </div>
 @endif
 
+@php
+    $isVocabot = \Illuminate\Support\Str::contains(strtolower($website->website_name), 'vocabot')
+        || \Illuminate\Support\Str::contains(strtolower($website->domain), 'vocabot');
+    $themeSettingsMap = $website->themeSettings->pluck('setting_value', 'setting_key')->toArray();
+@endphp
+
+@if ($isVocabot)
+    <div class="cbh-card mb-4" style="border-left: 4px solid #7c3aed; background: linear-gradient(90deg, rgba(124, 58, 237, 0.06) 0%, rgba(168, 85, 247, 0.02) 100%);">
+        <div class="cbh-card-body d-flex align-items-center justify-content-between flex-wrap gap-3 p-3">
+            <div class="d-flex align-items-center gap-3">
+                <div style="width: 44px; height: 44px; border-radius: 8px; background: #7c3aed; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.25rem;">
+                    <i class="bi bi-palette-fill"></i>
+                </div>
+                <div>
+                    <div class="d-flex align-items-center gap-2">
+                        <strong style="font-size: 0.98rem; color: var(--cbh-neutral-800);">Vocabot Website Theme Management</strong>
+                        <span class="cbh-badge cbh-badge-primary" style="background:#7c3aed; border-color:#7c3aed;">Vocabot</span>
+                    </div>
+                    <p class="mb-0 text-muted" style="font-size: 0.85rem;">Manage brand colors, logo, typography, and button styling specifically for Vocabot.</p>
+                </div>
+            </div>
+            <a href="{{ route('websites.theme.index', $website) }}" class="cbh-btn cbh-btn-primary" style="background:#7c3aed; border-color:#7c3aed;">
+                <i class="bi bi-sliders me-1"></i> Manage Vocabot Theme
+            </a>
+        </div>
+    </div>
+@endif
+
 <div class="row g-4">
 
     {{-- Left Column --}}
@@ -365,12 +393,31 @@
                     <i class="bi bi-palette-fill" style="color:var(--cbh-brand-500);margin-right:0.375rem;"></i>
                     Theme Settings
                 </h2>
-                <a href="{{ route('websites.theme.index', $website) }}" class="cbh-btn cbh-btn-secondary cbh-btn-sm">
-                    Customize Theme
+                <a href="{{ route('websites.theme.index', $website) }}" class="cbh-btn cbh-btn-primary cbh-btn-sm">
+                    <i class="bi bi-sliders me-1"></i> Manage Theme
                 </a>
             </div>
             @if ($website->themeSettings->count() > 0)
                 <div class="cbh-card-body" style="display:flex;flex-direction:column;gap:0.5rem;">
+                    @if (isset($themeSettingsMap['primary_color']) || isset($themeSettingsMap['accent_color']))
+                        <div class="p-2 mb-2 rounded bg-light border d-flex align-items-center justify-content-between">
+                            <span class="small fw-semibold text-secondary">Active Palette</span>
+                            <div class="d-flex align-items-center gap-1">
+                                @if (isset($themeSettingsMap['primary_color']))
+                                    <span title="Primary: {{ $themeSettingsMap['primary_color'] }}" style="display:inline-block;width:18px;height:18px;border-radius:4px;background:{{ $themeSettingsMap['primary_color'] }};border:1px solid rgba(0,0,0,0.15);"></span>
+                                @endif
+                                @if (isset($themeSettingsMap['accent_color']))
+                                    <span title="Accent: {{ $themeSettingsMap['accent_color'] }}" style="display:inline-block;width:18px;height:18px;border-radius:4px;background:{{ $themeSettingsMap['accent_color'] }};border:1px solid rgba(0,0,0,0.15);"></span>
+                                @endif
+                                @if (isset($themeSettingsMap['background_color']))
+                                    <span title="Background: {{ $themeSettingsMap['background_color'] }}" style="display:inline-block;width:18px;height:18px;border-radius:4px;background:{{ $themeSettingsMap['background_color'] }};border:1px solid rgba(0,0,0,0.15);"></span>
+                                @endif
+                                @if (isset($themeSettingsMap['text_color']))
+                                    <span title="Text: {{ $themeSettingsMap['text_color'] }}" style="display:inline-block;width:18px;height:18px;border-radius:4px;background:{{ $themeSettingsMap['text_color'] }};border:1px solid rgba(0,0,0,0.15);"></span>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
                     @foreach ($website->themeSettings as $ts)
                         <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.8rem;padding:0.375rem 0;border-bottom:1px solid var(--cbh-border);">
                             <div>
@@ -379,7 +426,14 @@
                                 @endif
                                 <div class="cbh-text-subtle">{{ $ts->setting_key }}</div>
                             </div>
-                            <span class="cbh-badge cbh-badge-neutral">{{ $ts->setting_value }}</span>
+                            @if (str_starts_with((string)$ts->setting_value, '#'))
+                                <span class="d-inline-flex align-items-center gap-1 font-monospace" style="font-size:0.8rem;">
+                                    <span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:{{ $ts->setting_value }};border:1px solid #ccc;"></span>
+                                    {{ $ts->setting_value }}
+                                </span>
+                            @else
+                                <span class="cbh-badge cbh-badge-neutral">{{ \Illuminate\Support\Str::limit($ts->setting_value, 24) }}</span>
+                            @endif
                         </div>
                     @endforeach
                 </div>
