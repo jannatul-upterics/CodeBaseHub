@@ -19,17 +19,17 @@ class VocabotSeeder extends Seeder
     {
         // 1. Identify existing Vocabot website or create if not present (never duplicate)
         $website = Website::where('website_name', 'Vocabot')
-            ->orWhere('domain', 'vocabot.ai')
+            ->orWhere('domain', 'vocabots.com')
             ->orWhere('domain', 'like', '%vocabot%')
             ->first();
 
         if (! $website) {
             $website = Website::create([
                 'website_name' => 'Vocabot',
-                'domain' => 'vocabot.ai',
+                'domain' => 'vocabots.com',
                 'description' => '24/7 AI Voice Receptionist for Business Call Answering and Scheduling.',
                 'notes' => 'Codebase located at Vocabot/ with dedicated tenant database vocabot.',
-                'provider' => 'local',
+                'provider' => 'aws',
                 'status' => 1,
                 'provisioning_status' => 'provisioned',
             ]);
@@ -120,8 +120,8 @@ class VocabotSeeder extends Seeder
                 'host' => '127.0.0.1',
                 'port' => 3306,
                 'database' => 'vocabot',
-                'username' => 'root',
-                'password' => '',
+                'username' => 'vocabot_user',
+                'password' => 'vocabot@2026',
             ]
         );
     }
