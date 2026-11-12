@@ -18,6 +18,68 @@ class StoreWebsiteRequest extends FormRequest
     }
 
     /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        $mode = $this->input('tenant_db_mode');
+        $prefix = match ($mode) {
+            'create' => 'create_',
+            'connect' => 'connect_',
+            default => null,
+        };
+
+        $merge = [];
+
+        if ($prefix !== null) {
+            if (! $this->filled('db_host') && $this->filled($prefix.'db_host')) {
+                $merge['db_host'] = $this->input($prefix.'db_host');
+            }
+            if (! $this->filled('db_port') && $this->filled($prefix.'db_port')) {
+                $merge['db_port'] = $this->input($prefix.'db_port');
+            }
+            if (! $this->filled('db_name') && $this->filled($prefix.'db_name')) {
+                $merge['db_name'] = $this->input($prefix.'db_name');
+            }
+            if (! $this->filled('db_username') && $this->filled($prefix.'db_username')) {
+                $merge['db_username'] = $this->input($prefix.'db_username');
+            }
+            if (! $this->has('db_password') && $this->has($prefix.'db_password')) {
+                $merge['db_password'] = $this->input($prefix.'db_password');
+            }
+        }
+
+        // When creating a new database, fall back to default database provisioner credentials if left empty
+        if ($mode === 'create') {
+            $defaultDriver = (string) config('database.default', 'mysql');
+            $driverConfig = config("database.connections.{$defaultDriver}", []);
+
+            if (empty($merge['db_host'] ?? $this->input('db_host'))) {
+                $merge['db_host'] = $driverConfig['host'] ?? '127.0.0.1';
+            }
+            if (empty($merge['db_port'] ?? $this->input('db_port'))) {
+                $merge['db_port'] = (int) ($driverConfig['port'] ?? 3306);
+            }
+            if (empty($merge['db_username'] ?? $this->input('db_username'))) {
+                $merge['db_username'] = $driverConfig['username'] ?? 'root';
+            }
+            if (! isset($merge['db_password']) && ! $this->has('db_password')) {
+                $merge['db_password'] = $driverConfig['password'] ?? '';
+            }
+        }
+
+        if ($this->has('status_submitted')) {
+            $merge['status'] = $this->boolean('status') ? 1 : 0;
+        } elseif ($this->has('status')) {
+            $merge['status'] = (int) $this->input('status');
+        }
+
+        if (! empty($merge)) {
+            $this->merge($merge);
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
@@ -26,6 +88,7 @@ class StoreWebsiteRequest extends FormRequest
     {
         return [
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
+            'template_id' => ['nullable', 'integer', 'exists:templates,id'],
             'theme_id' => ['nullable', 'integer', 'exists:themes,id'],
             'website_name' => ['required', 'string', 'max:255'],
             'domain' => ['required', 'string', 'max:255', 'unique:websites,domain'],

@@ -421,6 +421,25 @@
                         @enderror
                     </div>
 
+                    {{-- Template Selection --}}
+                    <div class="cbh-form-group">
+                        <label for="template_id" class="cbh-label">Template</label>
+                        <select id="template_id"
+                                name="template_id"
+                                class="cbh-select {{ $errors->has('template_id') ? 'is-invalid' : '' }}">
+                            <option value="">Select template (optional)…</option>
+                            @foreach ($templates as $template)
+                                <option value="{{ $template->id }}" {{ old('template_id') == $template->id ? 'selected' : '' }}>
+                                    {{ $template->template_name }} (v{{ $template->version ?? '1.0' }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="cbh-field-hint">Assigns layout and structural template.</p>
+                        @error('template_id')
+                            <p class="cbh-field-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     {{-- Theme Selection --}}
                     <div class="cbh-form-group" style="margin-bottom:0;">
                         <label for="theme_id" class="cbh-label">Design Theme</label>

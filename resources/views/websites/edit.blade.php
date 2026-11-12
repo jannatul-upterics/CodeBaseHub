@@ -131,7 +131,7 @@
                     </div>
 
                     {{-- Customer --}}
-                    <div class="cbh-form-group" style="margin-bottom:0;">
+                    <div class="cbh-form-group">
                         <label for="customer_id" class="cbh-label">Customer</label>
                         <select id="customer_id"
                                 name="customer_id"
@@ -145,6 +145,43 @@
                             @endforeach
                         </select>
                         @error('customer_id')
+                            <p class="cbh-field-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Template Selection --}}
+                    <div class="cbh-form-group">
+                        <label for="template_id" class="cbh-label">Template</label>
+                        <select id="template_id"
+                                name="template_id"
+                                class="cbh-select {{ $errors->has('template_id') ? 'is-invalid' : '' }}">
+                            <option value="">No template assigned</option>
+                            @foreach ($templates as $tmpl)
+                                <option value="{{ $tmpl->id }}" {{ old('template_id', $website->template_id) == $tmpl->id ? 'selected' : '' }}>
+                                    {{ $tmpl->template_name }} (v{{ $tmpl->version ?? '1.0' }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="cbh-field-hint">Assigns layout and structural template.</p>
+                        @error('template_id')
+                            <p class="cbh-field-error">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Theme Selection --}}
+                    <div class="cbh-form-group" style="margin-bottom:0;">
+                        <label for="theme_id" class="cbh-label">Design Theme</label>
+                        <select id="theme_id"
+                                name="theme_id"
+                                class="cbh-select {{ $errors->has('theme_id') ? 'is-invalid' : '' }}">
+                            <option value="">No theme override</option>
+                            @foreach ($themes as $theme)
+                                <option value="{{ $theme->id }}" {{ old('theme_id', $currentThemeId) == $theme->id ? 'selected' : '' }}>
+                                    {{ $theme->theme_name }} (v{{ $theme->version ?? '1.0' }})
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('theme_id')
                             <p class="cbh-field-error">{{ $message }}</p>
                         @enderror
                     </div>

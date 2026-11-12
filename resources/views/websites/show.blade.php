@@ -42,32 +42,8 @@
 @endif
 
 @php
-    $isVocabot = \Illuminate\Support\Str::contains(strtolower($website->website_name), 'vocabot')
-        || \Illuminate\Support\Str::contains(strtolower($website->domain), 'vocabot');
     $themeSettingsMap = $website->themeSettings->pluck('setting_value', 'setting_key')->toArray();
 @endphp
-
-@if ($isVocabot)
-    <div class="cbh-card mb-4" style="border-left: 4px solid #7c3aed; background: linear-gradient(90deg, rgba(124, 58, 237, 0.06) 0%, rgba(168, 85, 247, 0.02) 100%);">
-        <div class="cbh-card-body d-flex align-items-center justify-content-between flex-wrap gap-3 p-3">
-            <div class="d-flex align-items-center gap-3">
-                <div style="width: 44px; height: 44px; border-radius: 8px; background: #7c3aed; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.25rem;">
-                    <i class="bi bi-palette-fill"></i>
-                </div>
-                <div>
-                    <div class="d-flex align-items-center gap-2">
-                        <strong style="font-size: 0.98rem; color: var(--cbh-neutral-800);">Vocabot Website Theme Management</strong>
-                        <span class="cbh-badge cbh-badge-primary" style="background:#7c3aed; border-color:#7c3aed;">Vocabot</span>
-                    </div>
-                    <p class="mb-0 text-muted" style="font-size: 0.85rem;">Manage brand colors, logo, typography, and button styling specifically for Vocabot.</p>
-                </div>
-            </div>
-            <a href="{{ route('websites.theme.index', $website) }}" class="cbh-btn cbh-btn-primary" style="background:#7c3aed; border-color:#7c3aed;">
-                <i class="bi bi-sliders me-1"></i> Manage Vocabot Theme
-            </a>
-        </div>
-    </div>
-@endif
 
 <div class="row g-4">
 
@@ -106,6 +82,12 @@
                         <div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--cbh-neutral-400);margin-bottom:0.25rem;">Customer</div>
                         <div style="font-size:0.875rem;color:var(--cbh-neutral-700);">
                             {{ $website->customer?->name ?? '—' }}
+                        </div>
+                    </div>
+                    <div class="col-12 col-sm-6">
+                        <div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--cbh-neutral-400);margin-bottom:0.25rem;">Template</div>
+                        <div style="font-size:0.875rem;color:var(--cbh-neutral-700);">
+                            {{ $website->template?->template_name ?? '—' }}
                         </div>
                     </div>
                     @if ($website->description)

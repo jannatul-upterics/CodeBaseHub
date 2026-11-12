@@ -17,6 +17,24 @@ class UpdateWebsiteRequest extends FormRequest
     }
 
     /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        $merge = [];
+
+        if ($this->has('status_submitted')) {
+            $merge['status'] = $this->boolean('status') ? 1 : 0;
+        } elseif ($this->has('status')) {
+            $merge['status'] = (int) $this->input('status');
+        }
+
+        if (! empty($merge)) {
+            $this->merge($merge);
+        }
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
@@ -27,6 +45,7 @@ class UpdateWebsiteRequest extends FormRequest
 
         return [
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
+            'template_id' => ['nullable', 'integer', 'exists:templates,id'],
             'theme_id' => ['nullable', 'integer', 'exists:themes,id'],
             'website_name' => ['required', 'string', 'max:255'],
             'domain' => ['required', 'string', 'max:255', "unique:websites,domain,{$websiteId}"],

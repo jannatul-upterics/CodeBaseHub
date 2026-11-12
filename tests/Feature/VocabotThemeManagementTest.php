@@ -27,14 +27,14 @@ class VocabotThemeManagementTest extends TestCase
 
         $this->assertDatabaseHas('websites', [
             'website_name' => 'Vocabot',
-            'domain' => 'vocabot.ai',
+            'domain' => 'vocabots.com',
         ]);
 
         $website = Website::where('website_name', 'Vocabot')->first();
         $this->assertNotNull($website);
         $this->assertNotNull($website->template_id);
         $this->assertEquals('Vocabot AI Voice Agent', $website->template->template_name);
-        $this->assertEquals('vocabot.ai', $website->primaryDomain->domain_name);
+        $this->assertEquals('vocabots.com', $website->primaryDomain->domain_name);
 
         // Verify all 7 required theme settings are stored in database
         $this->assertDatabaseHas('website_theme_settings', [
@@ -352,7 +352,7 @@ class VocabotThemeManagementTest extends TestCase
             ->get(route('websites.show', $website));
 
         $response->assertOk();
-        $response->assertSee('Manage Vocabot Theme');
+        $response->assertSee('Manage Theme');
         $response->assertSee(route('websites.theme.index', $website));
     }
 

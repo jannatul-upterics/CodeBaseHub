@@ -6,6 +6,7 @@ use App\Http\Requests\StoreWebsiteRequest;
 use App\Http\Requests\UpdateWebsiteRequest;
 use App\Models\Customer;
 use App\Models\Domain;
+use App\Models\Template;
 use App\Models\Theme;
 use App\Models\Website;
 use App\Models\WebsiteThemeSetting;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Throwable;
@@ -30,13 +32,16 @@ class WebsiteController extends Controller
         $provider = trim((string) $request->query('provider', ''));
         $template = trim((string) $request->query('template', ''));
 
-        $query = Website::query()->with(['customer', 'primaryDomain', 'themes', 'databaseConnection']);
+        $query = Website::query()->with(['customer', 'template', 'primaryDomain', 'themes', 'databaseConnection']);
 
         if ($search !== '') {
             $query->where(function (Builder $builder) use ($search): void {
                 $builder->where('website_name', 'like', "%{$search}%")
                     ->orWhere('domain', 'like', "%{$search}%")
                     ->orWhere('provider', 'like', "%{$search}%")
+                    ->orWhereHas('template', function (Builder $templateQuery) use ($search): void {
+                        $templateQuery->where('template_name', 'like', "%{$search}%");
+                    })
                     ->orWhereHas('themes', function (Builder $themeQuery) use ($search): void {
                         $themeQuery->where('theme_name', 'like', "%{$search}%");
                     });
@@ -52,8 +57,12 @@ class WebsiteController extends Controller
         }
 
         if ($template !== '') {
-            $query->whereHas('themes', function (Builder $themeQuery) use ($template): void {
-                $themeQuery->where('theme_name', $template);
+            $query->where(function (Builder $builder) use ($template): void {
+                $builder->whereHas('template', function (Builder $templateQuery) use ($template): void {
+                    $templateQuery->where('template_name', $template);
+                })->orWhereHas('themes', function (Builder $themeQuery) use ($template): void {
+                    $themeQuery->where('theme_name', $template);
+                });
             });
         }
 
@@ -77,9 +86,10 @@ class WebsiteController extends Controller
     {
         $customers = Customer::orderBy('name')->get();
         $themes = Theme::where('status', 1)->orderBy('theme_name')->get();
+        $templates = Template::where('status', 1)->orderBy('template_name')->get();
         $selectedCustomerId = $request->query('customer_id');
 
-        return view('websites.create', compact('customers', 'themes', 'selectedCustomerId'));
+        return view('websites.create', compact('customers', 'themes', 'templates', 'selectedCustomerId'));
     }
 
     /**
@@ -94,18 +104,20 @@ class WebsiteController extends Controller
         unset($data['theme_id']);
 
         $tenantDbMode = $data['tenant_db_mode'] ?? null;
+        $driver = (string) ($data['driver'] ?? config('database.default', 'mysql'));
         $dbConfig = [
-            'driver' => 'mysql',
-            'host' => $data['db_host'] ?? config('database.connections.mysql.host', '127.0.0.1'),
-            'port' => (int) ($data['db_port'] ?? config('database.connections.mysql.port', 3306)),
+            'driver' => $driver,
+            'host' => $data['db_host'] ?? config("database.connections.{$driver}.host", '127.0.0.1'),
+            'port' => (int) ($data['db_port'] ?? config("database.connections.{$driver}.port", 3306)),
             'database' => $data['db_name'] ?? null,
-            'username' => $data['db_username'] ?? config('database.connections.mysql.username', 'root'),
-            'password' => $data['db_password'] ?? '',
+            'username' => $data['db_username'] ?? config("database.connections.{$driver}.username", 'root'),
+            'password' => $data['db_password'] ?? config("database.connections.{$driver}.password", ''),
         ];
         $runMigrations = (bool) ($data['run_migrations'] ?? true);
 
         unset(
             $data['tenant_db_mode'],
+            $data['driver'],
             $data['db_host'],
             $data['db_port'],
             $data['db_name'],
@@ -114,28 +126,33 @@ class WebsiteController extends Controller
             $data['run_migrations']
         );
 
-        $website = Website::create($data);
+        // Safely persist website, theme setting, and primary domain within a transaction
+        $website = DB::transaction(function () use ($data, $themeId) {
+            $website = Website::create($data);
 
-        // Attach theme configuration if selected
-        if ($themeId) {
-            WebsiteThemeSetting::create([
-                'website_id' => $website->id,
-                'theme_id' => (int) $themeId,
-                'setting_key' => 'active_theme',
-                'setting_value' => 'active',
-            ]);
-        }
+            // Attach theme configuration if selected
+            if ($themeId) {
+                WebsiteThemeSetting::create([
+                    'website_id' => $website->id,
+                    'theme_id' => (int) $themeId,
+                    'setting_key' => 'active_theme',
+                    'setting_value' => 'active',
+                ]);
+            }
 
-        // Ensure bare domain record is created in domains table
-        Domain::firstOrCreate(
-            ['domain_name' => $website->domain],
-            [
-                'website_id' => $website->id,
-                'is_primary' => true,
-                'ssl_enabled' => false,
-                'status' => 1,
-            ]
-        );
+            // Ensure bare domain record is created in domains table
+            Domain::firstOrCreate(
+                ['domain_name' => $website->domain],
+                [
+                    'website_id' => $website->id,
+                    'is_primary' => true,
+                    'ssl_enabled' => false,
+                    'status' => 1,
+                ]
+            );
+
+            return $website;
+        });
 
         if ($tenantDbMode) {
             try {
@@ -170,7 +187,7 @@ class WebsiteController extends Controller
      */
     public function show(Website $website): View
     {
-        $website->load(['customer', 'domains', 'pages', 'themeSettings.theme', 'settings', 'metadata', 'databaseConnection']);
+        $website->load(['customer', 'template', 'domains', 'pages', 'themeSettings.theme', 'settings', 'metadata', 'databaseConnection']);
         $allThemes = Theme::where('status', 1)->orderBy('theme_name')->get();
 
         return view('websites.show', compact('website', 'allThemes'));
@@ -183,10 +200,11 @@ class WebsiteController extends Controller
     {
         $customers = Customer::orderBy('name')->get();
         $themes = Theme::where('status', 1)->orderBy('theme_name')->get();
+        $templates = Template::where('status', 1)->orderBy('template_name')->get();
         $currentThemeId = $website->themeSettings()->where('setting_key', 'active_theme')->value('theme_id')
             ?? $website->themeSettings()->first()?->theme_id;
 
-        return view('websites.edit', compact('website', 'customers', 'themes', 'currentThemeId'));
+        return view('websites.edit', compact('website', 'customers', 'themes', 'templates', 'currentThemeId'));
     }
 
     /**
@@ -261,20 +279,24 @@ class WebsiteController extends Controller
     ): JsonResponse {
         $validated = $request->validate([
             'mode' => ['required', 'string', 'in:create,connect'],
-            'host' => ['required', 'string'],
+            'driver' => ['nullable', 'string'],
+            'host' => ['nullable', 'string'],
             'port' => ['nullable', 'integer', 'between:1,65535'],
             'database' => ['nullable', 'string', 'max:64', 'regex:/^[a-zA-Z0-9_]+$/'],
-            'username' => ['required', 'string'],
+            'username' => ['nullable', 'string'],
             'password' => ['nullable', 'string'],
         ]);
 
+        $driver = (string) ($validated['driver'] ?? config('database.default', 'mysql'));
+        $driverConfig = config("database.connections.{$driver}", []);
+
         $config = [
-            'driver' => 'mysql',
-            'host' => $validated['host'],
-            'port' => (int) ($validated['port'] ?? 3306),
+            'driver' => $driver,
+            'host' => $validated['host'] ?? ($driverConfig['host'] ?? '127.0.0.1'),
+            'port' => (int) ($validated['port'] ?? ($driverConfig['port'] ?? 3306)),
             'database' => $validated['database'] ?? null,
-            'username' => $validated['username'],
-            'password' => $validated['password'] ?? '',
+            'username' => $validated['username'] ?? ($driverConfig['username'] ?? 'root'),
+            'password' => $validated['password'] ?? ($driverConfig['password'] ?? ''),
         ];
 
         $result = $provisioningService->testConnection($config, $validated['mode']);

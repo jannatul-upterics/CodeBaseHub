@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Template;
 use App\Models\User;
 use App\Models\Website;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -300,7 +301,7 @@ class WebsiteCrudTest extends TestCase
     }
 
     /**
-     * Test that user input containing HTML or script tags is safely escaped in rendered views.
+     * Test that user content is escaped when rendered.
      */
     public function test_user_content_is_escaped_when_rendered(): void
     {
@@ -316,5 +317,79 @@ class WebsiteCrudTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;Secure Site', false);
         $response->assertDontSee('<script>alert("xss")</script>', false);
+    }
+
+    /**
+     * Test that a template can be assigned when creating a website.
+     */
+    public function test_website_creation_saves_template_id(): void
+    {
+        $user = User::factory()->create();
+        $template = Template::factory()->create(['template_name' => 'Starter Template']);
+
+        $response = $this->actingAs($user)->post(route('websites.store'), [
+            'website_name' => 'Templated Site',
+            'domain' => 'templated.io',
+            'provider' => 'cloud',
+            'template_id' => $template->id,
+        ]);
+
+        $response->assertRedirect(route('websites.index'));
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('websites', [
+            'website_name' => 'Templated Site',
+            'domain' => 'templated.io',
+            'template_id' => $template->id,
+        ]);
+    }
+
+    /**
+     * Test that a template assignment can be updated and cleared on a website.
+     */
+    public function test_website_update_saves_and_clears_template_id(): void
+    {
+        $user = User::factory()->create();
+        $templateA = Template::factory()->create(['template_name' => 'Template A']);
+        $templateB = Template::factory()->create(['template_name' => 'Template B']);
+        $website = Website::factory()->create(['template_id' => $templateA->id]);
+
+        // Switch to a different template
+        $response = $this->actingAs($user)->put(route('websites.update', $website), [
+            'website_name' => $website->website_name,
+            'domain' => $website->domain,
+            'provider' => $website->provider,
+            'template_id' => $templateB->id,
+        ]);
+
+        $response->assertRedirect(route('websites.show', $website));
+        $this->assertDatabaseHas('websites', ['id' => $website->id, 'template_id' => $templateB->id]);
+
+        // Clear the template
+        $response = $this->actingAs($user)->put(route('websites.update', $website), [
+            'website_name' => $website->website_name,
+            'domain' => $website->domain,
+            'provider' => $website->provider,
+            'template_id' => null,
+        ]);
+
+        $response->assertRedirect(route('websites.show', $website));
+        $this->assertDatabaseHas('websites', ['id' => $website->id, 'template_id' => null]);
+    }
+
+    /**
+     * Test that the show page displays the assigned template name.
+     */
+    public function test_show_page_displays_template_name(): void
+    {
+        $user = User::factory()->create();
+        $template = Template::factory()->create(['template_name' => 'Showcase Template']);
+        $website = Website::factory()->create(['template_id' => $template->id]);
+
+        $response = $this->actingAs($user)->get(route('websites.show', $website));
+
+        $response->assertStatus(200);
+        $response->assertSee('Template');
+        $response->assertSee('Showcase Template');
     }
 }

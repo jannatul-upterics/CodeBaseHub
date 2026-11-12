@@ -258,6 +258,16 @@
                     </div>
                 @endif
 
+                @if (session('warning'))
+                    <div class="cbh-alert cbh-alert-warning" role="alert">
+                        <i class="bi bi-exclamation-circle-fill cbh-alert-icon"></i>
+                        <span>{{ session('warning') }}</span>
+                        <button class="cbh-alert-close" onclick="this.closest('.cbh-alert').remove()" aria-label="Dismiss">
+                            <i class="bi bi-x-lg" style="font-size:0.75rem;"></i>
+                        </button>
+                    </div>
+                @endif
+
                 @if (session('error'))
                     <div class="cbh-alert cbh-alert-danger" role="alert">
                         <i class="bi bi-exclamation-triangle-fill cbh-alert-icon"></i>
