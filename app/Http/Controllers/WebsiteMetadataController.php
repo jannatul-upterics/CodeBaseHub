@@ -92,6 +92,13 @@ class WebsiteMetadataController extends Controller
             ]
         );
 
+        $page->update([
+            'meta_title' => $validated['meta_title'] ?? null,
+            'meta_description' => $validated['meta_description'] ?? null,
+            'canonical_url' => $validated['canonical_url'] ?? null,
+            'og_image' => $validated['og_image'] ?? null,
+        ]);
+
         return redirect()
             ->route('websites.seo.index', ['website' => $website, 'page_id' => $page->id])
             ->with('success', "SEO metadata for page '{$page->title}' saved successfully.");

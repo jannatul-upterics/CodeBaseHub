@@ -97,6 +97,65 @@
                 </div>
             </div>
 
+            {{-- Add Pages / Template Pages Selection Section --}}
+            <div class="cbh-card mb-4" id="templatePagesCard">
+                <div class="cbh-card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="cbh-card-title">
+                            <i class="bi bi-file-earmark-plus me-2" style="color:var(--cbh-brand-500);"></i>
+                            Add Pages (Template Library)
+                        </h2>
+                        <p class="cbh-card-subtitle">Select pre-built pages from the template library to import into this website.</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="cbh-btn cbh-btn-secondary cbh-btn-sm" onclick="cbhToggleAllPages(true)">Select All</button>
+                        <button type="button" class="cbh-btn cbh-btn-secondary cbh-btn-sm" onclick="cbhToggleAllPages(false)">Deselect All</button>
+                    </div>
+                </div>
+                <div class="cbh-card-body p-0">
+                    @if(isset($templatePages) && $templatePages->isNotEmpty())
+                        <div class="list-group list-group-flush">
+                            @foreach($templatePages as $tPage)
+                                <label class="list-group-item d-flex align-items-center justify-content-between p-3 cursor-pointer" style="cursor:pointer;" data-template-id="{{ $tPage->template_id }}">
+                                    <div class="d-flex align-items-start gap-3">
+                                        <input class="form-check-input mt-1 template-page-checkbox"
+                                               type="checkbox"
+                                               name="selected_pages[]"
+                                               value="{{ $tPage->slug }}"
+                                               checked>
+                                        <div>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <strong class="text-dark" style="font-size:0.92rem;">{{ $tPage->title }}</strong>
+                                                @if($tPage->is_homepage)
+                                                    <span class="cbh-badge cbh-badge-success" style="font-size:0.7rem;">Homepage</span>
+                                                @endif
+                                                <span class="cbh-badge cbh-badge-neutral" style="font-size:0.7rem;">{{ ucfirst($tPage->page_type) }}</span>
+                                            </div>
+                                            <div class="text-muted font-monospace mt-1" style="font-size:0.78rem;">
+                                                /{{ $tPage->slug }}
+                                                <span class="ms-2 badge bg-light text-dark border">
+                                                    <i class="bi bi-layers me-1"></i>{{ $tPage->sections->count() }} sections
+                                                </span>
+                                            </div>
+                                            @if($tPage->content)
+                                                <p class="text-muted mb-0 mt-1 text-truncate" style="font-size:0.78rem;max-width:550px;">
+                                                    {{ Str::limit($tPage->content, 120) }}
+                                                </p>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </label>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="p-4 text-center text-muted">
+                            <i class="bi bi-file-earmark-x" style="font-size:1.5rem;"></i>
+                            <p class="mb-0 mt-2" style="font-size:0.85rem;">No pre-built template pages currently available in the central library.</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
             {{-- Tenant Database Configuration Section --}}
             <div class="cbh-card" id="tenantDatabaseCard">
                 <div class="cbh-card-header">
@@ -501,6 +560,12 @@
 
 @push('scripts')
 <script>
+function cbhToggleAllPages(check) {
+    document.querySelectorAll('.template-page-checkbox').forEach(cb => {
+        cb.checked = check;
+    });
+}
+
 function cbhToggleTenantDbMode(mode) {
     const cardCreate = document.getElementById('cardModeCreate');
     const cardConnect = document.getElementById('cardModeConnect');

@@ -48,6 +48,20 @@ class PageSection extends Model
     }
 
     /**
+     * Set the content attribute, automatically decoding JSON strings.
+     */
+    public function setContentAttribute(mixed $value): void
+    {
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $value = $decoded;
+            }
+        }
+        $this->attributes['content'] = is_array($value) ? json_encode($value) : $value;
+    }
+
+    /**
      * Get the page that owns this section.
      *
      * @return BelongsTo<Page, $this>

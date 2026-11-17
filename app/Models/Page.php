@@ -27,11 +27,25 @@ class Page extends Model
      */
     protected $fillable = [
         'website_id',
+        'tenant_page_id',
         'title',
         'slug',
         'page_type',
         'is_homepage',
+        'is_template',
         'status',
+        'content',
+        'meta_title',
+        'meta_description',
+        'canonical_url',
+        'og_image',
+        'sections_data',
+        'sync_hash',
+        'parent_id',
+        'template_id',
+        'sort_order',
+        'is_indexable',
+        'master_page_id',
     ];
 
     /**
@@ -43,7 +57,13 @@ class Page extends Model
     {
         return [
             'is_homepage' => 'boolean',
+            'is_template' => 'boolean',
             'status' => 'integer',
+            'sections_data' => 'array',
+            'sort_order' => 'integer',
+            'is_indexable' => 'boolean',
+            'tenant_page_id' => 'integer',
+            'master_page_id' => 'integer',
         ];
     }
 
@@ -55,6 +75,16 @@ class Page extends Model
     public function website(): BelongsTo
     {
         return $this->belongsTo(Website::class, 'website_id');
+    }
+
+    /**
+     * Get the template blueprint this page belongs to.
+     *
+     * @return BelongsTo<Template, $this>
+     */
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(Template::class, 'template_id');
     }
 
     /**
@@ -75,5 +105,25 @@ class Page extends Model
     public function metadata(): HasMany
     {
         return $this->hasMany(Metadata::class, 'page_id');
+    }
+
+    /**
+     * Get the master blueprint page this page is derived from.
+     *
+     * @return BelongsTo<Page, $this>
+     */
+    public function masterPage(): BelongsTo
+    {
+        return $this->belongsTo(Page::class, 'master_page_id');
+    }
+
+    /**
+     * Get all pages derived from this master blueprint page.
+     *
+     * @return HasMany<Page, $this>
+     */
+    public function derivedPages(): HasMany
+    {
+        return $this->hasMany(Page::class, 'master_page_id');
     }
 }

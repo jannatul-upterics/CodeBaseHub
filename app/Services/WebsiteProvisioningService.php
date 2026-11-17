@@ -3,13 +3,13 @@
 namespace App\Services;
 
 use App\Exceptions\WebsiteProvisioningException;
+use App\Http\Middleware\TenantConnection;
 use App\Models\Website;
 use App\Models\WebsiteDatabaseConnection;
 use Closure;
 use Exception;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use PDO;
@@ -386,7 +386,7 @@ class WebsiteProvisioningService
     }
 
     /**
-     * Dynamically register and configure tenant connection in Laravel.
+     * Dynamically register and configure tenant connection in Laravel using TenantConnection middleware.
      */
     public function configureTenantConnection(
         string $driver,
@@ -396,33 +396,7 @@ class WebsiteProvisioningService
         string $username,
         ?string $password
     ): void {
-        $isSqlite = $driver === 'sqlite' || str_ends_with($database, '.sqlite') || $database === ':memory:';
-
-        if ($isSqlite) {
-            $config = [
-                'driver' => 'sqlite',
-                'database' => $database,
-                'prefix' => '',
-                'foreign_key_constraints' => true,
-            ];
-        } else {
-            $config = [
-                'driver' => $driver,
-                'host' => $host,
-                'port' => $port,
-                'database' => $database,
-                'username' => $username,
-                'password' => $password ?? '',
-                'charset' => 'utf8mb4',
-                'collation' => 'utf8mb4_unicode_ci',
-                'prefix' => '',
-                'strict' => true,
-                'engine' => null,
-            ];
-        }
-
-        Config::set('database.connections.tenant', $config);
-        DB::purge('tenant');
+        TenantConnection::configureRaw($driver, $host, $port, $database, $username, $password);
     }
 
     /**

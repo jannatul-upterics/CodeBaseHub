@@ -6,6 +6,7 @@ use App\Http\Requests\StoreWebsiteRequest;
 use App\Http\Requests\UpdateWebsiteRequest;
 use App\Models\Customer;
 use App\Models\Domain;
+use App\Models\Page;
 use App\Models\Template;
 use App\Models\Theme;
 use App\Models\Website;
@@ -115,6 +116,9 @@ class WebsiteController extends Controller
         ];
         $runMigrations = (bool) ($data['run_migrations'] ?? true);
 
+        $selectedPages = $data['selected_pages'] ?? null;
+        unset($data['selected_pages']);
+
         unset(
             $data['tenant_db_mode'],
             $data['driver'],
@@ -127,7 +131,7 @@ class WebsiteController extends Controller
         );
 
         // Safely persist website, theme setting, and primary domain within a transaction
-        $website = DB::transaction(function () use ($data, $themeId) {
+        $website = DB::transaction(function () use ($data, $themeId, $selectedPages) {
             $website = Website::create($data);
 
             // Attach theme configuration if selected
@@ -150,6 +154,40 @@ class WebsiteController extends Controller
                     'status' => 1,
                 ]
             );
+
+            // Copy selected template pages if provided
+            if (! empty($selectedPages) && $website->template_id) {
+                $templatePages = Page::whereNull('website_id')
+                    ->where('is_template', true)
+                    ->whereIn('slug', (array) $selectedPages)
+                    ->with('sections')
+                    ->get();
+
+                foreach ($templatePages as $tplPage) {
+                    $newPage = $website->pages()->create([
+                        'title' => $tplPage->title,
+                        'slug' => $tplPage->slug,
+                        'page_type' => $tplPage->page_type,
+                        'is_homepage' => (bool) $tplPage->is_homepage,
+                        'status' => 1,
+                        'content' => $tplPage->content,
+                        'meta_title' => $tplPage->meta_title,
+                        'meta_description' => $tplPage->meta_description,
+                        'canonical_url' => $tplPage->canonical_url,
+                        'og_image' => $tplPage->og_image,
+                    ]);
+
+                    foreach ($tplPage->sections as $sec) {
+                        $newPage->sections()->create([
+                            'section_name' => $sec->section_name,
+                            'section_type' => $sec->section_type,
+                            'content' => $sec->content,
+                            'sort_order' => $sec->sort_order,
+                            'status' => $sec->status,
+                        ]);
+                    }
+                }
+            }
 
             return $website;
         });

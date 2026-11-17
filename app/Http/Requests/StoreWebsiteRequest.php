@@ -96,6 +96,8 @@ class StoreWebsiteRequest extends FormRequest
             'notes' => ['nullable', 'string'],
             'status' => ['sometimes', 'integer', 'in:0,1'],
             'provider' => ['required', 'string', 'max:255'],
+            'selected_pages' => ['nullable', 'array'],
+            'selected_pages.*' => ['string'],
 
             // Tenant Database Configuration
             'tenant_db_mode' => ['nullable', 'string', 'in:create,connect'],

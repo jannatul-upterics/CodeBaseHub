@@ -39,6 +39,7 @@ class Website extends Model
         'provider',
         'template_name',
         'provisioning_status',
+        'slug',
     ];
 
     /**

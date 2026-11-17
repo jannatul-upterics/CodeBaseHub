@@ -87,7 +87,18 @@ class WebsitePageController extends Controller
                 'page_type' => $data['page_type'],
                 'is_homepage' => $isHomepage,
                 'status' => (int) ($data['status'] ?? 1),
+                'content' => $data['content'] ?? null,
+                'meta_title' => $data['meta_title'] ?? null,
+                'meta_description' => $data['meta_description'] ?? null,
             ]);
+
+            if (! empty($data['meta_title']) || ! empty($data['meta_description'])) {
+                $page->metadata()->create([
+                    'website_id' => $website->id,
+                    'meta_title' => $data['meta_title'] ?? null,
+                    'meta_description' => $data['meta_description'] ?? null,
+                ]);
+            }
         });
 
         return redirect()
@@ -152,7 +163,23 @@ class WebsitePageController extends Controller
                 'page_type' => $data['page_type'],
                 'is_homepage' => $isHomepage,
                 'status' => (int) ($data['status'] ?? 1),
+                'content' => $data['content'] ?? null,
+                'meta_title' => $data['meta_title'] ?? null,
+                'meta_description' => $data['meta_description'] ?? null,
             ]);
+
+            if (array_key_exists('meta_title', $data) || array_key_exists('meta_description', $data)) {
+                $page->metadata()->updateOrCreate(
+                    [
+                        'website_id' => $website->id,
+                        'page_id' => $page->id,
+                    ],
+                    [
+                        'meta_title' => $data['meta_title'] ?? null,
+                        'meta_description' => $data['meta_description'] ?? null,
+                    ]
+                );
+            }
         });
 
         return redirect()

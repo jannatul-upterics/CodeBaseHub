@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\CentralPageController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DomainController;
@@ -18,6 +19,12 @@ use App\Http\Controllers\WebsitePageController;
 use App\Http\Controllers\WebsitePageSectionController;
 use App\Http\Controllers\WebsiteSettingController;
 use App\Http\Controllers\WebsiteThemeController;
+use App\Models\Page;
+use App\Models\Template;
+use App\Models\Website;
+use App\Services\PageSyncService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 // Guest authentication routes
@@ -105,6 +112,7 @@ Route::middleware('auth')->group(function () {
 
     // 7. Pages
     Route::get('/pages', [PageController::class, 'index'])->name('pages.index');
+    Route::get('/pages/{slug}/preview', [CentralPageController::class, 'show'])->name('pages.preview');
 
     // 8. Media Library
     Route::get('/media', [MediaController::class, 'index'])->name('media.index');
@@ -116,4 +124,71 @@ Route::middleware('auth')->group(function () {
     Route::get('/metadata', [MetadataController::class, 'index'])->name('metadata.index');
 
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+});
+
+// Template Pages API (Public or Console)
+Route::get('/api/templates/{template}/pages', function (Template $template) {
+    $pages = Page::whereNull('website_id')->where('is_template', true)->get();
+
+    return response()->json([
+        'success' => true,
+        'pages' => $pages,
+    ]);
+})->name('api.templates.pages');
+
+// Tenant-scoped routing: applies TenantConnection middleware
+Route::middleware('tenant')->group(function () {
+    // Bi-directional sync API endpoint (from tenant to CodeBaseHub)
+    Route::post('/api/websites/{website}/sync-page', function (Website $website, Request $request, PageSyncService $syncService) {
+        $action = $request->input('action', 'save');
+        $pageData = $request->input('page', []);
+        $synced = $syncService->syncFromTenant($website, $pageData, $action);
+
+        return response()->json([
+            'success' => true,
+            'page' => $synced,
+        ]);
+    })->name('api.websites.sync-page');
+
+    // Dedicated tenant dynamic page routing
+    Route::get('/site-page/{slug?}', function (Request $request, ?string $slug = null) {
+        $website = $request->attributes->get('website');
+        $isHome = empty($slug) || $slug === 'home';
+        $query = DB::table('pages')->where('status', 1);
+
+        if ($isHome) {
+            $page = (clone $query)->where('is_homepage', 1)->first()
+                ?? (clone $query)->where('slug', 'home')->first();
+        } else {
+            $page = $query->where('slug', $slug)->first();
+        }
+
+        if (! $page) {
+            abort(404, 'Page not found');
+        }
+
+        $sections = DB::getSchemaBuilder()->hasTable('page_sections')
+            ? DB::table('page_sections')->where('page_id', $page->id)->orderBy('sort_order')->get()
+            : collect();
+
+        $metadata = DB::getSchemaBuilder()->hasTable('metadata')
+            ? DB::table('metadata')->where('page_id', $page->id)->first()
+            : null;
+
+        if ($request->wantsJson() || ! view()->exists('tenant.page')) {
+            return response()->json([
+                'success' => true,
+                'page' => $page,
+                'sections' => $sections,
+                'metadata' => $metadata,
+                'website' => [
+                    'id' => $website->id,
+                    'name' => $website->website_name,
+                    'domain' => $website->domain,
+                ],
+            ]);
+        }
+
+        return response()->view('tenant.page', compact('page', 'sections', 'metadata', 'website'));
+    })->name('tenant.pages.show');
 });

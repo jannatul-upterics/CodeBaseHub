@@ -115,6 +115,14 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div class="col-12">
+                            <label for="content" class="cbh-form-label">Page Content</label>
+                            <textarea id="content" name="content" rows="4" class="cbh-input @error('content') is-invalid @enderror" placeholder="Enter page content or introductory text...">{{ old('content', $page->content) }}</textarea>
+                            @error('content')
+                                <div class="cbh-form-error">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
                 </div>
 

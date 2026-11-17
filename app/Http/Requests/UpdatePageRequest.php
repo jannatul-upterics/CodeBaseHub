@@ -58,6 +58,9 @@ class UpdatePageRequest extends FormRequest
                     ->ignore($pageId),
             ],
             'page_type' => ['required', 'string', 'max:50'],
+            'content' => ['nullable', 'string'],
+            'meta_title' => ['nullable', 'string', 'max:255'],
+            'meta_description' => ['nullable', 'string'],
             'is_homepage' => ['sometimes', 'boolean'],
             'status' => ['sometimes', 'integer', 'in:0,1'],
         ];

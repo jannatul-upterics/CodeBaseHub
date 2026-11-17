@@ -35,19 +35,22 @@ class VocabotSeeder extends Seeder
             ]);
         }
 
-        // 2. Link Primary Domain
-        Domain::firstOrCreate(
-            [
-                'website_id' => $website->id,
-                'domain_name' => $website->domain,
-            ],
-            [
-                'is_primary' => true,
-                'ssl_enabled' => true,
-                'verified_at' => now(),
-                'status' => 1,
-            ]
-        );
+        // 2. Link Primary and recognized domains
+        $domains = array_unique(array_filter([$website->domain, 'vocabots.com', 'vocabot.ai', '127.0.0.1', 'localhost']));
+        foreach ($domains as $dName) {
+            Domain::firstOrCreate(
+                [
+                    'website_id' => $website->id,
+                    'domain_name' => $dName,
+                ],
+                [
+                    'is_primary' => ($dName === $website->domain),
+                    'ssl_enabled' => true,
+                    'verified_at' => now(),
+                    'status' => 1,
+                ]
+            );
+        }
 
         // 3. Link Template
         $template = Template::firstOrCreate(
@@ -120,9 +123,12 @@ class VocabotSeeder extends Seeder
                 'host' => '127.0.0.1',
                 'port' => 3306,
                 'database' => 'vocabot',
-                'username' => 'vocabot_user',
-                'password' => 'vocabot@2026',
+                'username' => 'root',
+                'password' => '',
             ]
         );
+
+        // 7. Import and store all Vocabot pages and sections in the CodeBaseHub central database
+        app(\App\Services\VocabotPageLibraryService::class)->importToCentralDatabase($website);
     }
 }

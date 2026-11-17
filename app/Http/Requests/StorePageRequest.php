@@ -51,6 +51,9 @@ class StorePageRequest extends FormRequest
                 Rule::unique('pages', 'slug')->where('website_id', $websiteId),
             ],
             'page_type' => ['required', 'string', 'max:50'],
+            'content' => ['nullable', 'string'],
+            'meta_title' => ['nullable', 'string', 'max:255'],
+            'meta_description' => ['nullable', 'string'],
             'is_homepage' => ['sometimes', 'boolean'],
             'status' => ['sometimes', 'integer', 'in:0,1'],
         ];

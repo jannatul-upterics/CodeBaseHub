@@ -72,6 +72,7 @@
                     <th>Page Type</th>
                     <th>Sections</th>
                     <th>Status</th>
+                    <th style="text-align: right;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -81,12 +82,17 @@
                             <div class="d-flex align-items-center gap-2">
                                 <i class="bi bi-file-earmark-text text-primary" style="font-size: 1.1rem;"></i>
                                 <div>
-                                    <span class="fw-bold text-dark">{{ $page->title }}</span>
+                                    <a href="{{ route('pages.preview', $page->slug) }}" class="fw-bold text-dark text-decoration-none">
+                                        {{ $page->title }}
+                                    </a>
                                     @if ($page->is_homepage)
                                         <span class="cbh-badge cbh-badge-success ms-1">
                                             <i class="bi bi-house-door-fill me-1" style="font-size: 0.38rem;"></i>
                                             Homepage
                                         </span>
+                                    @endif
+                                    @if ($page->is_template)
+                                        <span class="cbh-badge cbh-badge-primary ms-1" style="font-size:0.68rem;">Template</span>
                                     @endif
                                 </div>
                             </div>
@@ -100,7 +106,7 @@
                                     {{ $page->website->website_name }}
                                 </a>
                             @else
-                                <span class="text-muted">Unlinked</span>
+                                <span class="cbh-badge cbh-badge-neutral">Central Library</span>
                             @endif
                         </td>
                         <td>
@@ -118,10 +124,15 @@
                                 <span class="text-muted" style="font-size: 0.82rem;">Draft</span>
                             @endif
                         </td>
+                        <td style="text-align: right;">
+                            <a href="{{ route('pages.preview', $page->slug) }}" class="cbh-btn cbh-btn-secondary cbh-btn-sm" title="Preview Central Definition">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6">
+                        <td colspan="7">
                             <x-empty-state
                                 icon="bi-file-earmark-text"
                                 title="No pages found"

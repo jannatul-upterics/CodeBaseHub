@@ -56,4 +56,14 @@ class Template extends Model
     {
         return $this->hasMany(Website::class, 'template_id');
     }
+
+    /**
+     * Get all reusable blueprint pages defined under this template.
+     *
+     * @return HasMany<Page, $this>
+     */
+    public function pages(): HasMany
+    {
+        return $this->hasMany(Page::class, 'template_id');
+    }
 }
