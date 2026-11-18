@@ -6,6 +6,7 @@ use App\Http\Requests\StorePageRequest;
 use App\Http\Requests\UpdatePageRequest;
 use App\Models\Page;
 use App\Models\Website;
+use App\Services\PageSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -43,6 +44,7 @@ class WebsitePageController extends Controller
         $totalPages = $website->pages()->count();
         $publishedPages = $website->pages()->where('status', 1)->count();
         $hasHomepage = $website->pages()->where('is_homepage', true)->exists();
+        $trashedCount = $website->pages()->onlyTrashed()->count();
 
         return view('websites.pages.index', compact(
             'website',
@@ -51,7 +53,41 @@ class WebsitePageController extends Controller
             'status',
             'totalPages',
             'publishedPages',
-            'hasHomepage'
+            'hasHomepage',
+            'trashedCount'
+        ));
+    }
+
+    /**
+     * Display a listing of soft-deleted pages (Trash) for the specified website.
+     */
+    public function trash(Website $website, Request $request): View
+    {
+        $search = trim((string) $request->query('search', ''));
+
+        $query = $website->pages()->onlyTrashed()->withCount('sections');
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search): void {
+                $builder->where('title', 'like', "%{$search}%")
+                    ->orWhere('slug', 'like', "%{$search}%")
+                    ->orWhere('page_type', 'like', "%{$search}%");
+            });
+        }
+
+        $pages = $query->orderByDesc('deleted_at')
+            ->paginate(10)
+            ->withQueryString();
+
+        $trashedCount = $website->pages()->onlyTrashed()->count();
+        $activePagesCount = $website->pages()->count();
+
+        return view('websites.pages.trash', compact(
+            'website',
+            'pages',
+            'search',
+            'trashedCount',
+            'activePagesCount'
         ));
     }
 
@@ -188,7 +224,7 @@ class WebsitePageController extends Controller
     }
 
     /**
-     * Remove the specified page from storage.
+     * Soft delete the specified page.
      */
     public function destroy(Website $website, Page $page): RedirectResponse
     {
@@ -199,14 +235,10 @@ class WebsitePageController extends Controller
         $title = $page->title;
         $wasHomepage = $page->is_homepage;
 
-        DB::transaction(function () use ($page): void {
-            // Delete related sections and page-scoped metadata
-            $page->sections()->delete();
-            $page->metadata()->delete();
-            $page->delete();
-        });
+        // Soft delete: relationships (sections, metadata) are preserved for later restoration
+        $page->delete();
 
-        $message = "Page '{$title}' deleted successfully.";
+        $message = "Page '{$title}' moved to trash successfully.";
         if ($wasHomepage) {
             $message .= ' Note: You deleted the homepage. Please assign another page as homepage.';
         }
@@ -214,5 +246,71 @@ class WebsitePageController extends Controller
         return redirect()
             ->route('websites.pages.index', $website)
             ->with('success', $message);
+    }
+
+    /**
+     * Restore the specified soft-deleted page.
+     */
+    public function restore(Website $website, int $id): RedirectResponse
+    {
+        $page = Page::onlyTrashed()
+            ->where('website_id', $website->id)
+            ->findOrFail($id);
+
+        // Prevent duplicate pages during restoration:
+        // Check if an active page with the same slug already exists for this website
+        $slugConflict = Page::where('website_id', $website->id)
+            ->where('slug', $page->slug)
+            ->exists();
+
+        if ($slugConflict) {
+            return redirect()
+                ->route('websites.pages.trash', $website)
+                ->with('error', "Cannot restore page '{$page->title}' because an active page with slug '/{$page->slug}' already exists. Please rename or delete the existing page first.");
+        }
+
+        // Prevent multiple active homepages if another homepage was assigned while this page was in trash
+        if ($page->is_homepage) {
+            $activeHomepageExists = Page::where('website_id', $website->id)
+                ->where('is_homepage', true)
+                ->exists();
+
+            if ($activeHomepageExists) {
+                $page->is_homepage = false;
+                $page->save();
+            }
+        }
+
+        $page->restore();
+
+        return redirect()
+            ->route('websites.pages.trash', $website)
+            ->with('success', "Page '{$page->title}' restored successfully.");
+    }
+
+    /**
+     * Permanently remove the specified page and its associated records.
+     */
+    public function forceDelete(Website $website, int $id): RedirectResponse
+    {
+        $page = Page::onlyTrashed()
+            ->where('website_id', $website->id)
+            ->findOrFail($id);
+
+        $title = $page->title;
+
+        DB::transaction(function () use ($page, $website): void {
+            // Delete permanently on tenant database
+            app(PageSyncService::class)->forceDeletePageFromTenant($page, $website);
+
+            // Permanently delete related sections and page-scoped metadata
+            $page->sections()->delete();
+            $page->metadata()->delete();
+            $page->forceDelete();
+        });
+
+        return redirect()
+            ->route('websites.pages.trash', $website)
+            ->with('success', "Page '{$title}' permanently deleted.");
     }
 }

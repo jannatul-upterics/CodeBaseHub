@@ -44,9 +44,17 @@ class PageApiController extends Controller
             return response()->json(['success' => false, 'message' => 'Website not found for the given domain.'], 404);
         }
 
-        $pages = Page::where('website_id', $website->id)
-            ->where('status', 1)
-            ->orderBy('sort_order')
+        $query = Page::where('website_id', $website->id)
+            ->active()
+            ->where('status', 1);
+
+        if ($request->boolean('only_trashed')) {
+            $query->onlyTrashed();
+        } elseif ($request->boolean('with_trashed')) {
+            $query->withTrashed();
+        }
+
+        $pages = $query->orderBy('sort_order')
             ->orderBy('id')
             ->get(['id', 'title', 'slug', 'page_type', 'is_homepage', 'meta_title', 'meta_description', 'canonical_url', 'og_image']);
 
@@ -70,6 +78,7 @@ class PageApiController extends Controller
         }
 
         $page = Page::where('website_id', $website->id)
+            ->active()
             ->where('status', 1)
             ->where('is_homepage', 1)
             ->first();
@@ -77,6 +86,7 @@ class PageApiController extends Controller
         if (! $page) {
             // Fall back to a page with slug 'home'
             $page = Page::where('website_id', $website->id)
+                ->active()
                 ->where('status', 1)
                 ->where('slug', 'home')
                 ->first();
@@ -106,6 +116,7 @@ class PageApiController extends Controller
         }
 
         $page = Page::where('website_id', $website->id)
+            ->active()
             ->where('status', 1)
             ->where('slug', $slug)
             ->first();

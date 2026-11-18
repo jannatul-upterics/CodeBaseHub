@@ -55,6 +55,7 @@ class UpdatePageRequest extends FormRequest
                 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
                 Rule::unique('pages', 'slug')
                     ->where('website_id', $websiteId)
+                    ->whereNull('deleted_at')
                     ->ignore($pageId),
             ],
             'page_type' => ['required', 'string', 'max:50'],

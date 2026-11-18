@@ -226,6 +226,9 @@ class PageSyncService
                 if (Schema::connection('tenant')->hasColumn('pages', 'sync_hash')) {
                     $tenantData['sync_hash'] = $syncHash;
                 }
+                if (Schema::connection('tenant')->hasColumn('pages', 'deleted_at')) {
+                    $tenantData['deleted_at'] = null;
+                }
                 if ($existing) {
                     $tenantDb->table('pages')->where('id', $existing->id)->update($tenantData);
                     $tenantPageId = $existing->id;
@@ -313,7 +316,7 @@ class PageSyncService
     }
 
     /**
-     * Delete a page from tenant database.
+     * Delete (soft-delete if supported) a page from tenant database.
      */
     public function deletePageFromTenant(Page $page, ?Website $website = null): bool
     {
@@ -345,6 +348,109 @@ class PageSyncService
                     $tenantPage = $tenantDb->table('pages')->where('slug', $page->slug)->first();
                 }
                 if ($tenantPage) {
+                    if (Schema::connection('tenant')->hasColumn('pages', 'deleted_at')) {
+                        // Soft delete on tenant to preserve related records and allow restoration
+                        $tenantDb->table('pages')->where('id', $tenantPage->id)->update([
+                            'deleted_at' => now(),
+                        ]);
+                    } else {
+                        if (Schema::connection('tenant')->hasTable('page_sections')) {
+                            $tenantDb->table('page_sections')->where('page_id', $tenantPage->id)->delete();
+                        }
+                        if (Schema::connection('tenant')->hasTable('metadata')) {
+                            $tenantDb->table('metadata')->where('page_id', $tenantPage->id)->delete();
+                        }
+                        $tenantDb->table('pages')->where('id', $tenantPage->id)->delete();
+                    }
+                }
+
+                return true;
+            });
+        } catch (Throwable $e) {
+            Log::error('Failed to delete page from tenant: '.$e->getMessage(), [
+                'page_id' => $page->id,
+                'website_id' => $website->id ?? null,
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Restore a soft-deleted page on tenant database.
+     */
+    public function restorePageOnTenant(Page $page, ?Website $website = null): bool
+    {
+        if (static::isSyncing()) {
+            return true;
+        }
+        $website = $website ?? $page->website;
+        if (! $website || ! $website->databaseConnection) {
+            return false;
+        }
+        if (! $this->configureTenantConnection($website)) {
+            return false;
+        }
+        try {
+            return static::withoutSyncing(function () use ($page, $website): bool {
+                $tenantDb = DB::connection('tenant');
+                if (Schema::connection('tenant')->hasTable('pages')) {
+                    if (Schema::connection('tenant')->hasColumn('pages', 'deleted_at')) {
+                        $tenantQuery = $tenantDb->table('pages');
+                        if ($page->tenant_page_id) {
+                            $tenantQuery->where('id', $page->tenant_page_id)->update(['deleted_at' => null]);
+                        } elseif (Schema::connection('tenant')->hasColumn('pages', 'central_page_id')) {
+                            $tenantQuery->where('central_page_id', $page->id)->update(['deleted_at' => null]);
+                        } else {
+                            $tenantQuery->where('slug', $page->slug)->update(['deleted_at' => null]);
+                        }
+                    }
+                }
+
+                return $this->syncPageToTenant($page, $website);
+            });
+        } catch (Throwable $e) {
+            Log::error('Failed to restore page on tenant: '.$e->getMessage(), [
+                'page_id' => $page->id,
+                'website_id' => $website->id ?? null,
+            ]);
+
+            return false;
+        }
+    }
+
+    /**
+     * Permanently remove a page from tenant database.
+     */
+    public function forceDeletePageFromTenant(Page $page, ?Website $website = null): bool
+    {
+        if (static::isSyncing()) {
+            return true;
+        }
+        $website = $website ?? $page->website;
+        if (! $website || ! $website->databaseConnection) {
+            return false;
+        }
+        if (! $this->configureTenantConnection($website)) {
+            return false;
+        }
+        try {
+            return static::withoutSyncing(function () use ($page): bool {
+                $tenantDb = DB::connection('tenant');
+                if (! Schema::connection('tenant')->hasTable('pages')) {
+                    return true;
+                }
+                $tenantPage = null;
+                if ($page->tenant_page_id) {
+                    $tenantPage = $tenantDb->table('pages')->where('id', $page->tenant_page_id)->first();
+                }
+                if (! $tenantPage && Schema::connection('tenant')->hasColumn('pages', 'central_page_id')) {
+                    $tenantPage = $tenantDb->table('pages')->where('central_page_id', $page->id)->first();
+                }
+                if (! $tenantPage) {
+                    $tenantPage = $tenantDb->table('pages')->where('slug', $page->slug)->first();
+                }
+                if ($tenantPage) {
                     if (Schema::connection('tenant')->hasTable('page_sections')) {
                         $tenantDb->table('page_sections')->where('page_id', $tenantPage->id)->delete();
                     }
@@ -357,7 +463,7 @@ class PageSyncService
                 return true;
             });
         } catch (Throwable $e) {
-            Log::error('Failed to delete page from tenant: '.$e->getMessage(), [
+            Log::error('Failed to force delete page from tenant: '.$e->getMessage(), [
                 'page_id' => $page->id,
                 'website_id' => $website->id ?? null,
             ]);
@@ -394,8 +500,6 @@ class PageSyncService
             }
             if ($action === 'delete') {
                 if ($page) {
-                    $page->sections()->delete();
-                    $page->metadata()->delete();
                     $page->delete();
                 }
 

@@ -61,6 +61,7 @@ class TwoWayPageSyncTest extends TestCase
             $table->unsignedInteger('sort_order')->default(0);
             $table->boolean('is_indexable')->default(true);
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::connection('tenant')->create('page_sections', function ($table) {
@@ -232,10 +233,9 @@ class TwoWayPageSyncTest extends TestCase
         $page->sections()->delete();
         $page->delete();
 
-        // Check removed from central and tenant DB
-        $this->assertDatabaseMissing('pages', ['slug' => 'promo-2026']);
-        $this->assertFalse(DB::connection('tenant')->table('pages')->where('slug', 'promo-2026')->exists());
-        $this->assertFalse(DB::connection('tenant')->table('page_sections')->where('section_name', 'banner')->exists());
+        // Check soft-deleted from central and tenant DB
+        $this->assertSoftDeleted('pages', ['slug' => 'promo-2026']);
+        $this->assertFalse(DB::connection('tenant')->table('pages')->where('slug', 'promo-2026')->whereNull('deleted_at')->exists());
     }
 
     /**
@@ -339,8 +339,8 @@ class TwoWayPageSyncTest extends TestCase
         $syncService = app(PageSyncService::class);
         $syncService->syncFromTenant($this->website, (array) $tenantPage, 'delete');
 
-        // Verify page deleted from CodeBaseHub
-        $this->assertDatabaseMissing('pages', ['id' => $page->id, 'slug' => 'beta-info']);
+        // Verify page soft deleted from CodeBaseHub
+        $this->assertSoftDeleted('pages', ['id' => $page->id, 'slug' => 'beta-info']);
     }
 
     /**

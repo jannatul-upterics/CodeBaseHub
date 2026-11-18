@@ -5,13 +5,15 @@ namespace App\Models;
 use Database\Factories\PageFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Page extends Model
 {
     /** @use HasFactory<PageFactory> */
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     /**
      * The table associated with the model.
@@ -126,4 +128,16 @@ class Page extends Model
     {
         return $this->hasMany(Page::class, 'master_page_id');
     }
+    /**
+     * Scope a query to only include active (non‑deleted) pages.
+     *
+     * The SoftDeletes trait already applies a global "where null deleted_at" scope,
+     * so this local scope simply returns the query unchanged. It provides an
+     * explicit, expressive way to signal intent in the code.
+     */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query;
+    }
 }
+

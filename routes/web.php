@@ -51,6 +51,7 @@ Route::middleware('auth')->group(function () {
     // Website Management Dedicated Workspace
     Route::prefix('websites/{website}')->name('websites.')->group(function () {
         // Pages
+        Route::get('/pages/trash', [WebsitePageController::class, 'trash'])->name('pages.trash');
         Route::get('/pages', [WebsitePageController::class, 'index'])->name('pages.index');
         Route::get('/pages/create', [WebsitePageController::class, 'create'])->name('pages.create');
         Route::post('/pages', [WebsitePageController::class, 'store'])->name('pages.store');
@@ -58,6 +59,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/pages/{page}/edit', [WebsitePageController::class, 'edit'])->name('pages.edit');
         Route::put('/pages/{page}', [WebsitePageController::class, 'update'])->name('pages.update');
         Route::delete('/pages/{page}', [WebsitePageController::class, 'destroy'])->name('pages.destroy');
+        Route::post('/pages/{id}/restore', [WebsitePageController::class, 'restore'])->name('pages.restore');
+        Route::delete('/pages/{id}/force-delete', [WebsitePageController::class, 'forceDelete'])->name('pages.force_delete');
 
         // Page Sections
         Route::post('/pages/{page}/sections', [WebsitePageSectionController::class, 'store'])->name('pages.sections.store');
@@ -155,6 +158,10 @@ Route::middleware('tenant')->group(function () {
         $website = $request->attributes->get('website');
         $isHome = empty($slug) || $slug === 'home';
         $query = DB::table('pages')->where('status', 1);
+
+        if (Schema::hasColumn('pages', 'deleted_at')) {
+            $query->whereNull('deleted_at');
+        }
 
         if ($isHome) {
             $page = (clone $query)->where('is_homepage', 1)->first()

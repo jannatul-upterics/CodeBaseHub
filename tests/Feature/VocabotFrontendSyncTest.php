@@ -225,7 +225,7 @@ class VocabotFrontendSyncTest extends TestCase
         $deleteResponse = $this->postJson("/api/websites/{$this->website->id}/sync-page", $deletePayload);
         $deleteResponse->assertStatus(200);
 
-        // Verify deleted from CodeBaseHub
-        $this->assertDatabaseMissing('pages', ['website_id' => $this->website->id, 'slug' => 'api-created']);
+        // Verify soft-deleted from CodeBaseHub
+        $this->assertSoftDeleted('pages', ['website_id' => $this->website->id, 'slug' => 'api-created']);
     }
 }

@@ -79,10 +79,19 @@
                 @endif
             </form>
 
-            <a href="{{ route('websites.pages.create', $website) }}" class="cbh-btn cbh-btn-primary" style="white-space: nowrap;">
-                <i class="bi bi-plus-lg"></i>
-                Create Page
-            </a>
+            <div class="d-flex align-items-center gap-2">
+                <a href="{{ route('websites.pages.trash', $website) }}" class="cbh-btn cbh-btn-secondary position-relative" style="white-space: nowrap;">
+                    <i class="bi bi-trash"></i>
+                    Trash
+                    @if ($trashedCount > 0)
+                        <span class="badge bg-danger rounded-pill ms-1">{{ $trashedCount }}</span>
+                    @endif
+                </a>
+                <a href="{{ route('websites.pages.create', $website) }}" class="cbh-btn cbh-btn-primary" style="white-space: nowrap;">
+                    <i class="bi bi-plus-lg"></i>
+                    Create Page
+                </a>
+            </div>
         </div>
     </div>
 </div>
@@ -188,13 +197,13 @@
                                             @method('DELETE')
                                             <div class="modal-body py-3">
                                                 <p class="mb-1">Are you sure you want to delete <strong>{{ $p->title }}</strong> (/{{ $p->slug }})?</p>
-                                                <p class="text-muted small mb-0">All associated page sections and page metadata will also be permanently deleted.</p>
+                                                <p class="text-muted small mb-0">This page will be moved to the Trash. Associated sections and metadata will be preserved and can be restored later.</p>
                                             </div>
                                             <div class="modal-footer border-top">
                                                 <button type="button" class="cbh-btn cbh-btn-secondary" data-bs-dismiss="modal">Cancel</button>
                                                 <button type="submit" class="cbh-btn cbh-btn-primary" style="background:#dc2626;border-color:#dc2626;">
                                                     <i class="bi bi-trash"></i>
-                                                    Delete Page
+                                                    Move to Trash
                                                 </button>
                                             </div>
                                         </form>

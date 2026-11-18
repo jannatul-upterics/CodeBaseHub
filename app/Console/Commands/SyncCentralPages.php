@@ -2,11 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Services\PageSyncService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use App\Services\PageSyncService;
 
 #[Signature('app:sync-central-pages')]
 #[Description('Poll central CodeBaseHub DB for new pages and sync them into the Vocabot tenant DB')]
@@ -24,12 +24,14 @@ class SyncCentralPages extends Command
 
         if (! $website) {
             $this->error('Vocabot website not found in central DB');
+
             return 1;
         }
 
-        // Central pages for this website that are NOT yet linked to a tenant page
+        // Central pages for this website that are NOT yet linked to a tenant page and not deleted
         $orphanPages = $cbhDb->table('pages')
             ->where('website_id', $website->id)
+            ->whereNull('deleted_at')
             ->whereNull('tenant_page_id')
             ->get();
 
@@ -38,6 +40,7 @@ class SyncCentralPages extends Command
         }
 
         $this->info('Synced '.count($orphanPages).' new central pages into tenant DB');
+
         return 0;
     }
 }
