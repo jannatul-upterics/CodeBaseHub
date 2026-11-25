@@ -43,15 +43,7 @@ class PageSyncService
     }
 
     /**
-     * Synchronize a local Vocabot page create/update/delete to the central CodeBaseHub database.
-     */
-    public function syncToCodeBaseHub(Page $page, string $action = 'save'): bool
-    {
-        return true;
-    }
-
-    /**
-     * Synchronize a central CodeBaseHub page into the tenant Vocabot database.
+     * Synchronize a central CodeBaseHub page into the website's tenant database.
      * Used by the scheduled polling command.
      */
     public function syncFromCodeBaseHub(object $centralRecord): bool
@@ -63,13 +55,14 @@ class PageSyncService
         return static::withoutSyncing(function () use ($centralRecord): bool {
             $centralConn = TenantConnection::getCentralConnection();
             $cbhDb = DB::connection($centralConn);
-            $website = $cbhDb->table('websites')
-                ->where('website_name', 'Vocabot')
-                ->orWhere('domain', 'vocabots.com')
-                ->orWhere('domain', 'like', '%vocabot%')
-                ->first();
+            $website = isset($centralRecord->website_id)
+                ? $cbhDb->table('websites')->where('id', $centralRecord->website_id)->first()
+                : null;
             if (! $website) {
-                Log::warning('Vocabot website not found in central DB during syncFromCodeBaseHub');
+                Log::warning('Website not found in central DB during syncFromCodeBaseHub', [
+                    'central_page_id' => $centralRecord->id ?? null,
+                    'website_id' => $centralRecord->website_id ?? null,
+                ]);
 
                 return false;
             }

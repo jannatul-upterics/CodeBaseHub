@@ -6,11 +6,12 @@ use Database\Factories\WebsiteDatabaseConnectionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Stancl\Tenancy\Database\Concerns\CentralConnection;
 
 class WebsiteDatabaseConnection extends Model
 {
     /** @use HasFactory<WebsiteDatabaseConnectionFactory> */
-    use HasFactory;
+    use CentralConnection, HasFactory;
 
     /**
      * The table associated with the model.
@@ -35,14 +36,17 @@ class WebsiteDatabaseConnection extends Model
     ];
 
     /**
-     * The attributes that should be cast.
+     * Get the attributes that should be cast.
      *
-     * @var array<string, string>
+     * @return array<string, string>
      */
-    protected $casts = [
-        'port' => 'integer',
-        'password' => 'encrypted',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'port' => 'integer',
+            'password' => 'encrypted',
+        ];
+    }
 
     /**
      * The attributes that should be hidden for serialization.

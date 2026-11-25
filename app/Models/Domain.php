@@ -6,11 +6,14 @@ use Database\Factories\DomainFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Stancl\Tenancy\Contracts\Domain as DomainContract;
+use Stancl\Tenancy\Database\Concerns\CentralConnection;
+use Stancl\Tenancy\Database\Concerns\ConvertsDomainsToLowercase;
 
-class Domain extends Model
+class Domain extends Model implements DomainContract
 {
     /** @use HasFactory<DomainFactory> */
-    use HasFactory;
+    use CentralConnection, ConvertsDomainsToLowercase, HasFactory;
 
     /**
      * The table associated with the model.
@@ -25,8 +28,8 @@ class Domain extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'website_id',
-        'domain_name',
+        'tenant_id',
+        'domain',
         'verified_at',
         'is_primary',
         'ssl_enabled',
@@ -53,8 +56,21 @@ class Domain extends Model
      *
      * @return BelongsTo<Website, $this>
      */
+    /**
+     * New tenancy relationship – the website acting as the tenant.
+     */
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Website::class, 'tenant_id');
+    }
+
+    /**
+     * Get the website that owns the domain.
+     *
+     * @return BelongsTo<Website, $this>
+     */
     public function website(): BelongsTo
     {
-        return $this->belongsTo(Website::class, 'website_id');
+        return $this->tenant();
     }
 }

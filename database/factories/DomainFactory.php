@@ -19,8 +19,8 @@ class DomainFactory extends Factory
     public function definition(): array
     {
         return [
-            'website_id' => Website::factory(),
-            'domain_name' => fake()->unique()->domainName(),
+            'tenant_id' => Website::factory(),
+            'domain' => fake()->unique()->domainName(),
             'verified_at' => fake()->boolean(70) ? now() : null,
             'is_primary' => false,
             'ssl_enabled' => fake()->boolean(80),

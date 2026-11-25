@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SavePageSectionRequest;
 use App\Models\Page;
 use App\Models\PageSection;
 use App\Models\Website;
@@ -14,27 +15,14 @@ class WebsitePageSectionController extends Controller
     /**
      * Store a newly created page section.
      */
-    public function store(Website $website, Page $page, Request $request): RedirectResponse
+    public function store(Website $website, Page $page, SavePageSectionRequest $request): RedirectResponse
     {
         if ($page->website_id !== $website->id) {
             abort(404);
         }
 
-        $validated = $request->validate([
-            'section_name' => ['required', 'string', 'max:255'],
-            'section_type' => ['required', 'string', 'max:50'],
-            'content_format' => ['nullable', 'string', 'in:fields,json'],
-            'content_json' => ['nullable', 'string'],
-            'heading' => ['nullable', 'string', 'max:255'],
-            'subheading' => ['nullable', 'string', 'max:255'],
-            'body' => ['nullable', 'string'],
-            'button_text' => ['nullable', 'string', 'max:100'],
-            'button_url' => ['nullable', 'string', 'max:255'],
-            'status' => ['sometimes', 'integer', 'in:0,1'],
-        ]);
-
-        $content = $this->buildContentArray($validated, $request);
-
+        $validated = $request->validated();
+        $content = $this->buildContentArray($validated);
         $maxSortOrder = (int) $page->sections()->max('sort_order');
 
         $page->sections()->create([
@@ -53,26 +41,14 @@ class WebsitePageSectionController extends Controller
     /**
      * Update an existing page section.
      */
-    public function update(Website $website, Page $page, PageSection $section, Request $request): RedirectResponse
+    public function update(Website $website, Page $page, PageSection $section, SavePageSectionRequest $request): RedirectResponse
     {
         if ($page->website_id !== $website->id || $section->page_id !== $page->id) {
             abort(404);
         }
 
-        $validated = $request->validate([
-            'section_name' => ['required', 'string', 'max:255'],
-            'section_type' => ['required', 'string', 'max:50'],
-            'content_format' => ['nullable', 'string', 'in:fields,json'],
-            'content_json' => ['nullable', 'string'],
-            'heading' => ['nullable', 'string', 'max:255'],
-            'subheading' => ['nullable', 'string', 'max:255'],
-            'body' => ['nullable', 'string'],
-            'button_text' => ['nullable', 'string', 'max:100'],
-            'button_url' => ['nullable', 'string', 'max:255'],
-            'status' => ['sometimes', 'integer', 'in:0,1'],
-        ]);
-
-        $content = $this->buildContentArray($validated, $request);
+        $validated = $request->validated();
+        $content = $this->buildContentArray($validated);
 
         $section->update([
             'section_name' => $validated['section_name'],
@@ -155,7 +131,7 @@ class WebsitePageSectionController extends Controller
      * @param  array<string, mixed>  $validated
      * @return array<string, mixed>
      */
-    protected function buildContentArray(array $validated, Request $request): array
+    protected function buildContentArray(array $validated): array
     {
         if (($validated['content_format'] ?? '') === 'json' && ! empty($validated['content_json'])) {
             $decoded = json_decode((string) $validated['content_json'], true);

@@ -125,13 +125,13 @@ class EndToEndReleaseWorkflowTest extends TestCase
         // STEP 4. Configure the website's domain
         // -------------------------------------------------------------
         $domainResponse = $this->actingAs($admin)->post(route('websites.domains.store', $website), [
-            'domain_name' => 'app.novahorizon.com',
+            'domain' => 'app.novahorizon.com',
             'is_primary' => '1',
             'status' => 1,
         ]);
         $domainResponse->assertRedirect(route('websites.domains.index', $website));
 
-        $domain = Domain::where('domain_name', 'app.novahorizon.com')->firstOrFail();
+        $domain = Domain::where('domain', 'app.novahorizon.com')->firstOrFail();
         $this->assertTrue($domain->is_primary);
 
         // Verify DNS and SSL

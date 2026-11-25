@@ -77,8 +77,8 @@ class TenantConnectionMiddlewareTest extends TestCase
         ]);
 
         Domain::create([
-            'website_id' => $this->website->id,
-            'domain_name' => 'acmetenant.test',
+            'tenant_id' => $this->website->id,
+            'domain' => 'acmetenant.test',
             'is_primary' => true,
             'status' => 1,
         ]);
@@ -136,8 +136,8 @@ class TenantConnectionMiddlewareTest extends TestCase
     {
         $unconfiguredWebsite = Website::factory()->create(['domain' => 'nodb.test']);
         Domain::create([
-            'website_id' => $unconfiguredWebsite->id,
-            'domain_name' => 'nodb.test',
+            'tenant_id' => $unconfiguredWebsite->id,
+            'domain' => 'nodb.test',
             'is_primary' => true,
             'status' => 1,
         ]);

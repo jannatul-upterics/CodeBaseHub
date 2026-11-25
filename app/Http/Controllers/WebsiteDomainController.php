@@ -18,7 +18,7 @@ class WebsiteDomainController extends Controller
      */
     public function index(Website $website): View
     {
-        $domains = $website->domains()->orderByDesc('is_primary')->orderBy('domain_name')->get();
+        $domains = $website->domains()->orderByDesc('is_primary')->orderBy('domain')->get();
 
         return view('websites.domains.index', compact('website', 'domains'));
     }
@@ -34,13 +34,13 @@ class WebsiteDomainController extends Controller
         DB::transaction(function () use ($website, $validated, $isPrimary, &$domain): void {
             if ($isPrimary) {
                 // Clear primary status from any existing domains of this website
-                Domain::where('website_id', $website->id)->update(['is_primary' => false]);
-                $website->update(['domain' => $validated['domain_name']]);
+                Domain::where('tenant_id', $website->id)->update(['is_primary' => false]);
+                $website->update(['domain' => $validated['domain']]);
             }
 
             // Note: verified_at and ssl_enabled are strictly unverified initially
             $domain = $website->domains()->create([
-                'domain_name' => $validated['domain_name'],
+                'domain' => $validated['domain'],
                 'is_primary' => $isPrimary,
                 'status' => (int) ($validated['status'] ?? 1),
                 'verified_at' => null,
@@ -50,7 +50,7 @@ class WebsiteDomainController extends Controller
 
         return redirect()
             ->route('websites.domains.index', $website)
-            ->with('success', "Domain '{$validated['domain_name']}' registered. Run DNS verification when records are active.");
+            ->with('success', "Domain '{$validated['domain']}' registered. Run DNS verification when records are active.");
     }
 
     /**
@@ -58,25 +58,25 @@ class WebsiteDomainController extends Controller
      */
     public function update(Website $website, Domain $domain, UpdateDomainRequest $request): RedirectResponse
     {
-        if ($domain->website_id !== $website->id) {
+        if ($domain->tenant_id !== $website->id) {
             abort(404);
         }
 
         $validated = $request->validated();
         $isPrimary = $request->boolean('is_primary');
-        $domainNameChanged = ($domain->domain_name !== $validated['domain_name']);
+        $domainNameChanged = ($domain->domain !== $validated['domain']);
 
         DB::transaction(function () use ($website, $domain, $validated, $isPrimary, $domainNameChanged): void {
             if ($isPrimary && ! $domain->is_primary) {
-                Domain::where('website_id', $website->id)
+                Domain::where('tenant_id', $website->id)
                     ->where('id', '!=', $domain->id)
                     ->update(['is_primary' => false]);
 
-                $website->update(['domain' => $validated['domain_name']]);
+                $website->update(['domain' => $validated['domain']]);
             }
 
             $updateData = [
-                'domain_name' => $validated['domain_name'],
+                'domain' => $validated['domain'],
                 'is_primary' => $isPrimary,
                 'status' => (int) ($validated['status'] ?? 1),
             ];
@@ -92,7 +92,7 @@ class WebsiteDomainController extends Controller
 
         return redirect()
             ->route('websites.domains.index', $website)
-            ->with('success', "Domain '{$domain->domain_name}' updated successfully.");
+            ->with('success', "Domain '{$domain->domain}' updated successfully.");
     }
 
     /**
@@ -100,19 +100,19 @@ class WebsiteDomainController extends Controller
      */
     public function makePrimary(Website $website, Domain $domain): RedirectResponse
     {
-        if ($domain->website_id !== $website->id) {
+        if ($domain->tenant_id !== $website->id) {
             abort(404);
         }
 
         DB::transaction(function () use ($website, $domain): void {
-            Domain::where('website_id', $website->id)->update(['is_primary' => false]);
+            Domain::where('tenant_id', $website->id)->update(['is_primary' => false]);
             $domain->update(['is_primary' => true]);
-            $website->update(['domain' => $domain->domain_name]);
+            $website->update(['domain' => $domain->domain]);
         });
 
         return redirect()
             ->route('websites.domains.index', $website)
-            ->with('success', "'{$domain->domain_name}' is now the primary domain for {$website->website_name}.");
+            ->with('success', "'{$domain->domain}' is now the primary domain for {$website->website_name}.");
     }
 
     /**
@@ -120,11 +120,11 @@ class WebsiteDomainController extends Controller
      */
     public function verifyDnsSsl(Website $website, Domain $domain, Request $request): RedirectResponse
     {
-        if ($domain->website_id !== $website->id) {
+        if ($domain->tenant_id !== $website->id) {
             abort(404);
         }
 
-        $host = $domain->domain_name;
+        $host = $domain->domain;
         $allowManual = $request->boolean('force_verify');
 
         // External DNS resolution check
@@ -193,11 +193,11 @@ class WebsiteDomainController extends Controller
      */
     public function destroy(Website $website, Domain $domain): RedirectResponse
     {
-        if ($domain->website_id !== $website->id) {
+        if ($domain->tenant_id !== $website->id) {
             abort(404);
         }
 
-        $name = $domain->domain_name;
+        $name = $domain->domain;
         $wasPrimary = $domain->is_primary;
 
         $domain->delete();

@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('preview_image')->nullable();
             $table->string('version')->nullable();
             $table->unsignedTinyInteger('status')->default(1);
+            $table->json('appearance')->nullable();
             $table->timestamps();
         });
     }

@@ -34,13 +34,5 @@ class AppServiceProvider extends ServiceProvider
         Page::observe(PageObserver::class);
         PageSection::observe(PageSectionObserver::class);
         Metadata::observe(MetadataObserver::class);
-
-        $this->app['url']->resolveMissingNamedRoutesUsing(function (string $name, mixed $parameters, bool $absolute) {
-            if ($name === 'websites') {
-                return route('websites.index', $parameters, $absolute);
-            }
-
-            return null;
-        });
     }
 }

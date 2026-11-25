@@ -2,14 +2,18 @@
 
 namespace App\Http\Middleware;
 
+use App\Exceptions\TenantDatabaseConnectionException;
 use App\Models\Domain;
 use App\Models\Website;
 use App\Models\WebsiteDatabaseConnection;
+use App\Tenancy\Bootstrappers\WebsiteDatabaseTenancyBootstrapper;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class TenantConnection
 {
@@ -33,17 +37,11 @@ class TenantConnection
             return self::$centralConnection;
         }
 
-        if (config('database.connections.codebasehub')) {
-            return 'codebasehub';
-        }
-
-        $current = (string) Config::get('database.default', 'sqlite');
-
-        return $current !== 'tenant' ? $current : 'sqlite';
+        return app(WebsiteDatabaseTenancyBootstrapper::class)->resolveCentralConnection();
     }
 
     /**
-     * Build the connection configuration array.
+     * Build the connection configuration array via WebsiteDatabaseTenancyBootstrapper.
      *
      * @return array<string, mixed>
      */
@@ -55,30 +53,14 @@ class TenantConnection
         string $username,
         ?string $password
     ): array {
-        $isSqlite = $driver === 'sqlite' || str_ends_with($database, '.sqlite') || $database === ':memory:';
-
-        if ($isSqlite) {
-            return [
-                'driver' => 'sqlite',
-                'database' => $database,
-                'prefix' => '',
-                'foreign_key_constraints' => true,
-            ];
-        }
-
-        return [
+        return app(WebsiteDatabaseTenancyBootstrapper::class)->buildConnectionConfig([
             'driver' => $driver,
             'host' => $host,
             'port' => $port,
             'database' => $database,
             'username' => $username,
             'password' => $password ?? '',
-            'charset' => 'utf8mb4',
-            'collation' => 'utf8mb4_unicode_ci',
-            'prefix' => '',
-            'strict' => true,
-            'engine' => null,
-        ];
+        ]);
     }
 
     /**
@@ -98,23 +80,7 @@ class TenantConnection
             $connection = $connModel;
         }
 
-        if ($connection instanceof WebsiteDatabaseConnection) {
-            $driver = (string) ($connection->driver ?: 'mysql');
-            $host = (string) ($connection->host ?: '127.0.0.1');
-            $port = (int) ($connection->port ?: 3306);
-            $database = (string) $connection->database;
-            $username = (string) ($connection->username ?: 'root');
-            $password = (string) ($connection->password ?: '');
-        } else {
-            $driver = (string) ($connection['driver'] ?? 'mysql');
-            $host = (string) ($connection['host'] ?? '127.0.0.1');
-            $port = (int) ($connection['port'] ?? 3306);
-            $database = (string) ($connection['database'] ?? '');
-            $username = (string) ($connection['username'] ?? 'root');
-            $password = (string) ($connection['password'] ?? '');
-        }
-
-        $tenantConfig = self::buildConnectionConfig($driver, $host, $port, $database, $username, $password);
+        $tenantConfig = app(WebsiteDatabaseTenancyBootstrapper::class)->buildConnectionConfig($connection);
 
         Config::set('database.connections.tenant', $tenantConfig);
         DB::purge('tenant');
@@ -122,9 +88,10 @@ class TenantConnection
 
         if ($switchDefault) {
             if (self::$centralConnection === null && Config::get('database.default') !== 'tenant') {
-                self::$centralConnection = Config::get('database.default');
+                self::$centralConnection = (string) Config::get('database.default');
             }
             Config::set('database.default', 'tenant');
+            DB::setDefaultConnection('tenant');
         }
 
         return true;
@@ -162,11 +129,9 @@ class TenantConnection
             ?: $request->header('Host')
             ?: $request->getHost());
 
-        $host = explode(':', $rawHost)[0];
+        $host = strtolower(explode(':', $rawHost)[0]);
 
-        // Resolve domain → website
-        $domain = Domain::where('domain_name', $host)->first();
-        $website = $domain?->website;
+        $website = Domain::where('domain', $host)->first()?->website;
 
         if (! $website && $request->route('website')) {
             $websiteParam = $request->route('website');
@@ -177,24 +142,29 @@ class TenantConnection
             return response()->json(['error' => 'Domain not found'], 404);
         }
 
-        // Retrieve tenant DB connection configuration
-        $conn = WebsiteDatabaseConnection::where('website_id', $website->id)->first();
-        if (! $conn) {
+        if (! $website->databaseConnection()->exists()) {
             return response()->json(['error' => 'Tenant DB not configured'], 500);
         }
 
-        $previousDefault = Config::get('database.default');
+        $bootstrapper = app(WebsiteDatabaseTenancyBootstrapper::class);
 
-        self::configure($conn, switchDefault: true);
+        try {
+            $bootstrapper->bootstrap($website);
+        } catch (TenantDatabaseConnectionException|Throwable $e) {
+            Log::error('TenantConnection middleware failed to connect', [
+                'website_id' => $website->id,
+                'error' => $e->getMessage(),
+            ]);
 
-        // Share website model for downstream use
+            return response()->json(['error' => 'Tenant database connection failed'], 503);
+        }
+
         $request->attributes->set('website', $website);
 
         try {
             return $next($request);
         } finally {
-            // Restore default database connection to prevent leaking tenant default to central operations
-            Config::set('database.default', $previousDefault);
+            $bootstrapper->revert();
         }
     }
 }

@@ -16,7 +16,6 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             WebsiteSeeder::class,
-            VocabotSeeder::class,
         ]);
     }
 }

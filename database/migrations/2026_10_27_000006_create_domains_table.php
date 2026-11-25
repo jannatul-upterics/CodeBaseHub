@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('domains', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->foreignId('website_id')->constrained('websites')->cascadeOnDelete();
-            $table->string('domain_name')->unique();
+            $table->foreignId('tenant_id')->constrained('websites')->cascadeOnUpdate()->cascadeOnDelete();
+            $table->string('domain', 255)->unique();
             $table->timestamp('verified_at')->nullable();
             $table->boolean('is_primary')->default(false);
             $table->boolean('ssl_enabled')->default(false);

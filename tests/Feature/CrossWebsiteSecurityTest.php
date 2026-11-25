@@ -111,8 +111,8 @@ class CrossWebsiteSecurityTest extends TestCase
     public function test_cross_website_domain_isolation(): void
     {
         $domainB = Domain::factory()->create([
-            'website_id' => $this->websiteB->id,
-            'domain_name' => 'beta.corp',
+            'tenant_id' => $this->websiteB->id,
+            'domain' => 'beta.corp',
             'is_primary' => false,
         ]);
 
@@ -126,7 +126,7 @@ class CrossWebsiteSecurityTest extends TestCase
             ->delete(route('websites.domains.destroy', [$this->websiteA, $domainB]))
             ->assertStatus(404);
 
-        $this->assertDatabaseHas('domains', ['id' => $domainB->id, 'website_id' => $this->websiteB->id]);
+        $this->assertDatabaseHas('domains', ['id' => $domainB->id, 'tenant_id' => $this->websiteB->id]);
     }
 
     /**

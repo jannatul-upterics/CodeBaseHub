@@ -224,14 +224,14 @@ class WebsiteWorkspaceTest extends TestCase
     {
         // Add vanity domain
         $response = $this->actingAs($this->user)->post(route('websites.domains.store', $this->website), [
-            'domain_name' => 'store.acmeonline.org',
+            'domain' => 'store.acmeonline.org',
             'is_primary' => '1',
             'status' => 1,
         ]);
 
         $response->assertRedirect(route('websites.domains.index', $this->website));
 
-        $domain = Domain::where('domain_name', 'store.acmeonline.org')->firstOrFail();
+        $domain = Domain::where('domain', 'store.acmeonline.org')->firstOrFail();
         $this->assertTrue($domain->is_primary);
 
         // Website's primary domain property updated

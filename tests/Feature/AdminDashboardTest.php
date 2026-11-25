@@ -80,8 +80,8 @@ class AdminDashboardTest extends TestCase
         ]);
 
         Domain::factory()->create([
-            'website_id' => $site->id,
-            'domain_name' => 'acmeflagship.com',
+            'tenant_id' => $site->id,
+            'domain' => 'acmeflagship.com',
             'verified_at' => now(),
             'is_primary' => true,
             'ssl_enabled' => true,

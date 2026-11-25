@@ -20,7 +20,7 @@ class DomainController extends Controller
         $query = Domain::query()->with('website');
 
         if ($search !== '') {
-            $query->where('domain_name', 'like', "%{$search}%");
+            $query->where('domain', 'like', "%{$search}%");
         }
 
         if ($status === 'verified') {

@@ -90,8 +90,8 @@ class TwoWayPageSyncTest extends TestCase
 
         // Create website with database connection in central DB
         $this->website = Website::create([
-            'website_name' => 'Vocabot Test',
-            'domain' => 'vocabots.com',
+            'website_name' => 'Tenant Test Site',
+            'domain' => 'tenant-test.example.com',
             'provider' => 'cloud',
             'status' => 1,
             'provisioning_status' => 'provisioned',
@@ -130,9 +130,9 @@ class TwoWayPageSyncTest extends TestCase
             'page_type' => 'standard',
             'is_homepage' => false,
             'status' => 1,
-            'content' => 'Comprehensive feature breakdown of Vocabot AI Voice Receptionist.',
-            'meta_title' => 'Features | Vocabot AI',
-            'meta_description' => 'Explore the full capabilities of Vocabot AI voice receptionist.',
+            'content' => 'Comprehensive feature breakdown of the platform.',
+            'meta_title' => 'Features | Example Site',
+            'meta_description' => 'Explore the full capabilities of the platform.',
         ]);
 
         $page->sections()->create([
@@ -148,8 +148,8 @@ class TwoWayPageSyncTest extends TestCase
         $this->assertNotNull($tenantPage);
         $this->assertEquals('Features Overview', $tenantPage->title);
         $this->assertEquals($page->id, $tenantPage->central_page_id);
-        $this->assertEquals('Comprehensive feature breakdown of Vocabot AI Voice Receptionist.', $tenantPage->content);
-        $this->assertEquals('Features | Vocabot AI', $tenantPage->meta_title);
+        $this->assertEquals('Comprehensive feature breakdown of the platform.', $tenantPage->content);
+        $this->assertEquals('Features | Example Site', $tenantPage->meta_title);
 
         // Verify sections synchronized in tenant DB
         $tenantSection = DB::connection('tenant')->table('page_sections')->where('page_id', $tenantPage->id)->first();
@@ -183,16 +183,16 @@ class TwoWayPageSyncTest extends TestCase
         $page->update([
             'title' => 'Updated 2026 Enterprise Pricing',
             'content' => 'Affordable tiered pricing plans for restaurants and healthcare.',
-            'meta_title' => 'Pricing Plans 2026 | Vocabot',
-            'meta_description' => 'See all Vocabot enterprise pricing packages.',
+            'meta_title' => 'Pricing Plans 2026 | Tenant Site',
+            'meta_description' => 'See all enterprise pricing packages.',
         ]);
 
         Metadata::updateOrCreate(
             ['website_id' => $this->website->id, 'page_id' => $page->id],
             [
-                'meta_title' => 'Pricing Plans 2026 | Vocabot',
-                'meta_description' => 'See all Vocabot enterprise pricing packages.',
-                'canonical_url' => 'https://vocabots.com/pricing',
+                'meta_title' => 'Pricing Plans 2026 | Tenant Site',
+                'meta_description' => 'See all enterprise pricing packages.',
+                'canonical_url' => 'https://tenant-test.example.com/pricing',
             ]
         );
 
@@ -200,8 +200,8 @@ class TwoWayPageSyncTest extends TestCase
         $updatedTenantPage = DB::connection('tenant')->table('pages')->where('slug', 'pricing')->first();
         $this->assertEquals('Updated 2026 Enterprise Pricing', $updatedTenantPage->title);
         $this->assertEquals('Affordable tiered pricing plans for restaurants and healthcare.', $updatedTenantPage->content);
-        $this->assertEquals('Pricing Plans 2026 | Vocabot', $updatedTenantPage->meta_title);
-        $this->assertEquals('https://vocabots.com/pricing', $updatedTenantPage->canonical_url);
+        $this->assertEquals('Pricing Plans 2026 | Tenant Site', $updatedTenantPage->meta_title);
+        $this->assertEquals('https://tenant-test.example.com/pricing', $updatedTenantPage->canonical_url);
     }
 
     /**
@@ -239,7 +239,7 @@ class TwoWayPageSyncTest extends TestCase
     }
 
     /**
-     * Scenario 4: Create a page directly in tenant (Vocabot) → verify it synchronizes to CodeBaseHub.
+     * Scenario 4: Create a page directly in tenant → verify it synchronizes to CodeBaseHub.
      */
     public function test_scenario_4_create_page_in_tenant_synchronizes_to_codebasehub(): void
     {
@@ -249,8 +249,8 @@ class TwoWayPageSyncTest extends TestCase
             'page_type' => 'standard',
             'is_homepage' => 0,
             'status' => 1,
-            'content' => 'Blog articles posted directly from Vocabot website.',
-            'meta_title' => 'Vocabot Blog',
+            'content' => 'Blog articles posted directly from the tenant website.',
+            'meta_title' => 'Tenant Site Blog',
             'meta_description' => 'Latest news and updates on AI voice automation.',
             'sections_data' => json_encode([
                 ['section_name' => 'recent_posts', 'section_type' => 'features', 'content' => ['items' => ['Post 1', 'Post 2']]],
@@ -269,8 +269,8 @@ class TwoWayPageSyncTest extends TestCase
         $this->assertEquals('Direct Website Blog', $syncedPage->title);
         $this->assertEquals('blog', $syncedPage->slug);
         $this->assertEquals($tenantId, $syncedPage->tenant_page_id);
-        $this->assertEquals('Blog articles posted directly from Vocabot website.', $syncedPage->content);
-        $this->assertEquals('Vocabot Blog', $syncedPage->meta_title);
+        $this->assertEquals('Blog articles posted directly from the tenant website.', $syncedPage->content);
+        $this->assertEquals('Tenant Site Blog', $syncedPage->meta_title);
 
         // Verify section created in CodeBaseHub
         $section = $syncedPage->sections()->where('section_name', 'recent_posts')->first();
@@ -279,7 +279,7 @@ class TwoWayPageSyncTest extends TestCase
     }
 
     /**
-     * Scenario 5: Edit a page directly in tenant (Vocabot) → verify CodeBaseHub updates.
+     * Scenario 5: Edit a page directly in tenant → verify CodeBaseHub updates.
      */
     public function test_scenario_5_edit_page_in_tenant_updates_codebasehub(): void
     {
@@ -299,8 +299,8 @@ class TwoWayPageSyncTest extends TestCase
         DB::connection('tenant')->table('pages')->where('id', $tenantPage->id)->update([
             'title' => '24/7 Global Customer Support Hub',
             'content' => 'Reach our dedicated support team via voice agent or live chat.',
-            'meta_title' => 'Vocabot Support Hub',
-            'meta_description' => 'Fast 24/7 assistance for all Vocabot customers.',
+            'meta_title' => 'Tenant Site Support Hub',
+            'meta_description' => 'Fast 24/7 assistance for all customers.',
             'updated_at' => now()->addMinutes(5),
         ]);
 
@@ -313,11 +313,11 @@ class TwoWayPageSyncTest extends TestCase
         $this->assertEquals($page->id, $syncedPage->id);
         $this->assertEquals('24/7 Global Customer Support Hub', $syncedPage->title);
         $this->assertEquals('Reach our dedicated support team via voice agent or live chat.', $syncedPage->content);
-        $this->assertEquals('Vocabot Support Hub', $syncedPage->meta_title);
+        $this->assertEquals('Tenant Site Support Hub', $syncedPage->meta_title);
     }
 
     /**
-     * Scenario 6: Delete a page directly in tenant (Vocabot) → verify CodeBaseHub updates.
+     * Scenario 6: Delete a page directly in tenant → verify CodeBaseHub updates.
      */
     public function test_scenario_6_delete_page_in_tenant_removes_from_codebasehub(): void
     {

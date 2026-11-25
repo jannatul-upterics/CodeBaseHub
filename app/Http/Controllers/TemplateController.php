@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreTemplateRequest;
 use App\Http\Requests\UpdateTemplateRequest;
+use App\Models\Page;
 use App\Models\Template;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -105,5 +107,20 @@ class TemplateController extends Controller
         return redirect()
             ->route('templates.index')
             ->with('success', "Template '{$name}' deleted successfully.");
+    }
+
+    /**
+     * Return reusable blueprint pages associated with templates.
+     */
+    public function pages(Template $template): JsonResponse
+    {
+        $pages = Page::whereNull('website_id')
+            ->where('is_template', true)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'pages' => $pages,
+        ]);
     }
 }

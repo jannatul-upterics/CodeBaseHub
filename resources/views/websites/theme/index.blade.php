@@ -8,41 +8,17 @@
 
 @php
     $settingsMap = $themeSettings->pluck('setting_value', 'setting_key')->toArray();
-    $primaryColor = old('primary_color', $settingsMap['primary_color'] ?? $defaultAppearance['primary_color'] ?? '#7c3aed');
+    $primaryColor = old('primary_color', $settingsMap['primary_color'] ?? $defaultAppearance['primary_color'] ?? '#2563eb');
     $accentColor = old('accent_color', $settingsMap['accent_color'] ?? $defaultAppearance['accent_color'] ?? '#a855f7');
-    $backgroundColor = old('background_color', $settingsMap['background_color'] ?? $defaultAppearance['background_color'] ?? '#070313');
-    $textColor = old('text_color', $settingsMap['text_color'] ?? $defaultAppearance['text_color'] ?? '#ffffff');
-    $fontFamily = old('font_family', $settingsMap['font_family'] ?? $defaultAppearance['font_family'] ?? 'Plus Jakarta Sans');
-    $logo = old('logo', $settingsMap['logo'] ?? $defaultAppearance['logo'] ?? 'images/logo2.webp');
-    $buttonStyle = old('button_style', $settingsMap['button_style'] ?? $defaultAppearance['button_style'] ?? 'pill');
+    $backgroundColor = old('background_color', $settingsMap['background_color'] ?? $defaultAppearance['background_color'] ?? '#ffffff');
+    $textColor = old('text_color', $settingsMap['text_color'] ?? $defaultAppearance['text_color'] ?? '#1e293b');
+    $fontFamily = old('font_family', $settingsMap['font_family'] ?? $defaultAppearance['font_family'] ?? 'Instrument Sans');
+    $logo = old('logo', $settingsMap['logo'] ?? $defaultAppearance['logo'] ?? '');
+    $buttonStyle = old('button_style', $settingsMap['button_style'] ?? $defaultAppearance['button_style'] ?? 'rounded');
     $layoutMode = old('layout_mode', $settingsMap['layout_mode'] ?? $defaultAppearance['layout_mode'] ?? 'boxed');
     $navbarStyle = old('navbar_style', $settingsMap['navbar_style'] ?? $defaultAppearance['navbar_style'] ?? 'sticky');
     $customCss = old('custom_css', $settingsMap['custom_css'] ?? $defaultAppearance['custom_css'] ?? '');
 @endphp
-
-@if ($isVocabot)
-    <div class="cbh-card mb-4" style="border-left: 4px solid #7c3aed; background: linear-gradient(90deg, rgba(124, 58, 237, 0.08) 0%, rgba(168, 85, 247, 0.03) 100%);">
-        <div class="cbh-card-body d-flex align-items-center justify-content-between flex-wrap gap-3 p-3">
-            <div class="d-flex align-items-center gap-3">
-                <div style="width: 44px; height: 44px; border-radius: 8px; background: #7c3aed; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.25rem;">
-                    <i class="bi bi-robot"></i>
-                </div>
-                <div>
-                    <div class="d-flex align-items-center gap-2">
-                        <h2 style="font-size: 1rem; font-weight: 700; color: var(--cbh-neutral-800); margin-bottom: 0;">Vocabot Theme Management</h2>
-                        <span class="cbh-badge cbh-badge-primary" style="background:#7c3aed;border-color:#7c3aed;">Vocabot Website</span>
-                    </div>
-                    <p class="text-secondary small mb-0 mt-1">Configure brand colors, typography, logo, and button styling specifically for Vocabot. Settings are isolated to this website.</p>
-                </div>
-            </div>
-            <div class="d-flex align-items-center gap-2">
-                <a href="{{ $isVocabot ? 'http://127.0.0.1:8001' : (str_starts_with($website->domain, 'http') ? $website->domain : 'https://'.$website->domain) }}" target="_blank" rel="noopener noreferrer" class="cbh-btn cbh-btn-secondary cbh-btn-sm">
-                    <i class="bi bi-box-arrow-up-right me-1"></i> Preview Vocabot Website
-                </a>
-            </div>
-        </div>
-    </div>
-@endif
 
 @if ($errors->any())
     <div class="cbh-alert cbh-alert-danger mb-4">
@@ -294,7 +270,7 @@
                         <div class="col-12 col-md-6">
                             <label for="font_family" class="cbh-form-label">Typography Font Family</label>
                             <select id="font_family" name="font_family" class="cbh-select @error('font_family') is-invalid @enderror" onchange="updateLivePreview()">
-                                @foreach (['Plus Jakarta Sans' => 'Plus Jakarta Sans (Vocabot Default)', 'Instrument Sans' => 'Instrument Sans', 'Inter' => 'Inter', 'Roboto' => 'Roboto', 'Outfit' => 'Outfit', 'Poppins' => 'Poppins', 'Open Sans' => 'Open Sans', 'Merriweather' => 'Merriweather', 'Playfair Display' => 'Playfair Display'] as $fontVal => $fontLabel)
+                                @foreach (['Instrument Sans' => 'Instrument Sans (Default)', 'Plus Jakarta Sans' => 'Plus Jakarta Sans', 'Inter' => 'Inter', 'Roboto' => 'Roboto', 'Outfit' => 'Outfit', 'Poppins' => 'Poppins', 'Open Sans' => 'Open Sans', 'Merriweather' => 'Merriweather', 'Playfair Display' => 'Playfair Display'] as $fontVal => $fontLabel)
                                     <option value="{{ $fontVal }}" {{ $fontFamily === $fontVal ? 'selected' : '' }}>
                                         {{ $fontLabel }}
                                     </option>
@@ -310,7 +286,7 @@
                         <div class="col-12 col-md-6">
                             <label for="button_style" class="cbh-form-label">Button Styling</label>
                             <select id="button_style" name="button_style" class="cbh-select @error('button_style') is-invalid @enderror" onchange="updateLivePreview()">
-                                <option value="pill" {{ $buttonStyle === 'pill' ? 'selected' : '' }}>Pill (Rounded 999px - Vocabot Default)</option>
+                                <option value="pill" {{ $buttonStyle === 'pill' ? 'selected' : '' }}>Pill (Rounded 999px)</option>
                                 <option value="rounded" {{ $buttonStyle === 'rounded' ? 'selected' : '' }}>Rounded (8px Corner Radius)</option>
                                 <option value="square" {{ $buttonStyle === 'square' ? 'selected' : '' }}>Square (0px Sharp Edges)</option>
                             </select>
@@ -467,9 +443,9 @@
                     </div>
 
                     {{-- Preview Content --}}
-                    <h4 id="preview_heading" class="fw-bold mb-2" style="color:{{ $textColor }};">24/7 AI Voice Receptionist</h4>
+                    <h4 id="preview_heading" class="fw-bold mb-2" style="color:{{ $textColor }};">{{ $website->website_name }}</h4>
                     <p class="mb-4 small text-secondary" style="max-width:500px;opacity:0.85;">
-                        Automate inbound calls, schedule reservations, and deliver natural conversational intelligence with Vocabot.
+                        Live preview of your website's typography, colors, and button styles.
                     </p>
 
                     <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -550,7 +526,7 @@
                         Are you sure you want to reset all stored theme settings for <strong>{{ $website->website_name }}</strong> to default values?
                     </p>
                     <p style="font-size:0.82rem;color:var(--cbh-neutral-500);margin:0;">
-                        This will overwrite stored custom colors, typography, logo, and button styles in the database with default {{ $isVocabot ? 'Vocabot' : 'theme' }} values.
+                        This will overwrite stored custom colors, typography, logo, and button styles in the database with default theme values.
                     </p>
                 </div>
                 <div class="modal-footer" style="border-top:1px solid var(--cbh-border);padding:1rem 1.5rem;gap:0.5rem;">

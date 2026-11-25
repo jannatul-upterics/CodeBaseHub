@@ -41,8 +41,8 @@ class PageSoftDeleteTest extends TestCase
         ]);
 
         Domain::factory()->create([
-            'website_id' => $this->websiteA->id,
-            'domain_name' => 'alpha.test',
+            'tenant_id' => $this->websiteA->id,
+            'domain' => 'alpha.test',
             'is_primary' => true,
             'status' => 1,
         ]);
@@ -54,8 +54,8 @@ class PageSoftDeleteTest extends TestCase
         ]);
 
         Domain::factory()->create([
-            'website_id' => $this->websiteB->id,
-            'domain_name' => 'beta.test',
+            'tenant_id' => $this->websiteB->id,
+            'domain' => 'beta.test',
             'is_primary' => true,
             'status' => 1,
         ]);

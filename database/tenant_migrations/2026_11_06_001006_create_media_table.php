@@ -11,6 +11,7 @@ return new class extends Migration
         if (! Schema::hasTable('media')) {
             Schema::create('media', function (Blueprint $table) {
                 $table->bigIncrements('id');
+                $table->unsignedBigInteger('website_id')->nullable()->index();
                 $table->string('file_name');
                 $table->string('file_path');
                 $table->string('file_type');

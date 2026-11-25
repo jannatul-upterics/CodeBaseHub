@@ -21,13 +21,13 @@ class StoreDomainRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        if ($this->has('domain_name')) {
-            $domain = trim((string) $this->domain_name);
+        if ($this->has('domain')) {
+            $domain = trim((string) $this->domain);
             // Strip http:// or https:// if user pasted a URL
             $domain = preg_replace('#^https?://#i', '', $domain);
             $domain = rtrim($domain, '/');
             $this->merge([
-                'domain_name' => strtolower($domain),
+                'domain' => strtolower($domain),
             ]);
         }
     }
@@ -40,12 +40,12 @@ class StoreDomainRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'domain_name' => [
+            'domain' => [
                 'required',
                 'string',
                 'max:255',
                 'regex:/^(?!:\/\/)([a-zA-Z0-9-_]+\.)+[a-zA-Z]{2,}$/',
-                'unique:domains,domain_name',
+                'unique:domains,domain',
             ],
             'is_primary' => ['sometimes', 'boolean'],
             'status' => ['sometimes', 'integer', 'in:0,1'],
@@ -60,9 +60,9 @@ class StoreDomainRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'domain_name.required' => 'The domain name is required.',
-            'domain_name.regex' => 'The domain name must be a valid FQDN (e.g. app.example.com).',
-            'domain_name.unique' => 'This domain name is already registered to another website or entry.',
+            'domain.required' => 'The domain is required.',
+            'domain.regex' => 'The domain must be a valid FQDN (e.g. app.example.com).',
+            'domain.unique' => 'This domain is already registered to another website or entry.',
         ];
     }
 }

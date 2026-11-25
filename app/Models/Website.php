@@ -10,11 +10,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
+use Stancl\Tenancy\Contracts\Tenant;
+use Stancl\Tenancy\Database\Concerns\CentralConnection;
+use Stancl\Tenancy\Database\Concerns\HasInternalKeys;
+use Stancl\Tenancy\Database\Concerns\TenantRun;
 
-class Website extends Model
+class Website extends Model implements Tenant
 {
     /** @use HasFactory<WebsiteFactory> */
-    use HasFactory;
+    use CentralConnection, HasFactory, HasInternalKeys, TenantRun;
 
     /**
      * The table associated with the model.
@@ -55,6 +59,22 @@ class Website extends Model
     }
 
     /**
+     * Get the name of the key used for identifying the tenant.
+     */
+    public function getTenantKeyName(): string
+    {
+        return 'id';
+    }
+
+    /**
+     * Get the value of the key used for identifying the tenant.
+     */
+    public function getTenantKey()
+    {
+        return $this->getAttribute($this->getTenantKeyName());
+    }
+
+    /**
      * Get the customer that owns the website.
      *
      * @return BelongsTo<Customer, $this>
@@ -81,7 +101,7 @@ class Website extends Model
      */
     public function domains(): HasMany
     {
-        return $this->hasMany(Domain::class, 'website_id');
+        return $this->hasMany(Domain::class, 'tenant_id');
     }
 
     /**
@@ -91,7 +111,7 @@ class Website extends Model
      */
     public function primaryDomain(): HasOne
     {
-        return $this->hasOne(Domain::class, 'website_id')->where('is_primary', true);
+        return $this->hasOne(Domain::class, 'tenant_id')->where('is_primary', true);
     }
 
     /**
@@ -203,7 +223,10 @@ class Website extends Model
      */
     public function getProvisioningError(): ?string
     {
-        return $this->settings()->where('setting_key', 'provisioning_error')->value('setting_value');
+        return Setting::on($this->getConnectionName())
+            ->where('website_id', $this->id)
+            ->where('setting_key', 'provisioning_error')
+            ->value('setting_value');
     }
 
     /**
@@ -211,11 +234,15 @@ class Website extends Model
      */
     public function setProvisioningError(?string $error): void
     {
+        $query = Setting::on($this->getConnectionName())
+            ->where('website_id', $this->id)
+            ->where('setting_key', 'provisioning_error');
+
         if ($error === null || $error === '') {
-            $this->settings()->where('setting_key', 'provisioning_error')->delete();
+            $query->delete();
         } else {
-            $this->settings()->updateOrCreate(
-                ['setting_key' => 'provisioning_error'],
+            Setting::on($this->getConnectionName())->updateOrCreate(
+                ['website_id' => $this->id, 'setting_key' => 'provisioning_error'],
                 ['setting_value' => $error]
             );
         }

@@ -122,9 +122,9 @@ class WebsiteSeeder extends Seeder
 
             // Connect Primary Domain
             Domain::firstOrCreate(
-                ['domain_name' => $website->domain],
+                ['domain' => $website->domain],
                 [
-                    'website_id' => $website->id,
+                    'tenant_id' => $website->id,
                     'is_primary' => true,
                     'ssl_enabled' => true,
                     'verified_at' => now(),

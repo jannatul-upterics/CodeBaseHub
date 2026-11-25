@@ -12,8 +12,10 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->string('template_name');
             $table->string('slug')->unique();
+            $table->string('view_path')->nullable();
             $table->text('description')->nullable();
             $table->string('preview_image')->nullable();
+            $table->string('image_path')->nullable();
             $table->string('version')->nullable();
             $table->unsignedTinyInteger('status')->default(1);
             $table->timestamps();

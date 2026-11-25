@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\TenantConnection;
 use App\Models\Page;
 use App\Models\Website;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
+use Throwable;
 
 class PageController extends Controller
 {
@@ -37,5 +40,29 @@ class PageController extends Controller
         $websites = Website::orderBy('website_name')->get();
 
         return view('pages.index', compact('pages', 'search', 'websiteId', 'websites'));
+    }
+
+    /**
+     * Display a published page fetched from the central CodeBaseHub database.
+     */
+    public function preview(string $slug): View
+    {
+        try {
+            $connection = TenantConnection::getCentralConnection();
+            $page = Page::on($connection)
+                ->where('slug', $slug)
+                ->where('status', 1)
+                ->with(['sections', 'metadata', 'website', 'template'])
+                ->first();
+        } catch (Throwable $e) {
+            Log::error('Failed to fetch central page', ['slug' => $slug, 'error' => $e->getMessage()]);
+            abort(404, 'Page not found');
+        }
+
+        if (! $page) {
+            abort(404, 'Page not found');
+        }
+
+        return view('pages.show', ['page' => $page]);
     }
 }

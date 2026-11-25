@@ -213,7 +213,7 @@
                         <tbody>
                             @foreach ($website->domains as $domain)
                                 <tr>
-                                    <td class="cbh-domain">{{ $domain->domain_name }}</td>
+                                    <td class="cbh-domain">{{ $domain->domain }}</td>
                                     <td>
                                         @if ($domain->is_primary)
                                             <span class="cbh-badge cbh-badge-primary">Primary</span>

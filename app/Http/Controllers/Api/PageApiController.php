@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Domain;
 use App\Models\Page;
 use App\Models\Website;
+use App\Services\PageSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -25,7 +26,7 @@ class PageApiController extends Controller
 
         $domain = explode(':', (string) $domain)[0];
 
-        $domainRecord = Domain::where('domain_name', $domain)->first();
+        $domainRecord = Domain::where('domain', $domain)->first();
 
         return $domainRecord?->website;
     }
@@ -34,7 +35,7 @@ class PageApiController extends Controller
      * List all published pages for a website.
      *
      * GET /api/v1/pages
-     * Header: X-Website-Domain: vocabot.ai   OR  ?domain=vocabot.ai
+     * Header: X-Website-Domain: example.com   OR  ?domain=example.com
      */
     public function index(Request $request): JsonResponse
     {
@@ -176,5 +177,20 @@ class PageApiController extends Controller
             'sections' => $sections,
             'metadata' => $metadata,
         ];
+    }
+
+    /**
+     * Receive bi-directional page sync updates from a tenant application.
+     */
+    public function syncFromTenant(Website $website, Request $request, PageSyncService $syncService): JsonResponse
+    {
+        $action = (string) $request->input('action', 'save');
+        $pageData = (array) $request->input('page', []);
+        $synced = $syncService->syncFromTenant($website, $pageData, $action);
+
+        return response()->json([
+            'success' => true,
+            'page' => $synced,
+        ]);
     }
 }

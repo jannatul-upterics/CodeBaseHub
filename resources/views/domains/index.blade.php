@@ -79,7 +79,7 @@
                             <div class="d-flex align-items-center gap-2">
                                 <i class="bi bi-hdd-network text-teal" style="font-size: 1.1rem; color: #0d9488;"></i>
                                 <span class="fw-bold font-monospace text-dark" style="font-size: 0.885rem;">
-                                    {{ $d->domain_name }}
+                                    {{ $d->domain }}
                                 </span>
                             </div>
                         </td>

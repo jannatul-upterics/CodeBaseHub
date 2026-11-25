@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('metadata', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->foreignId('website_id')->constrained('websites')->cascadeOnDelete();
+            $table->foreignId('website_id')->nullable()->constrained('websites')->cascadeOnDelete();
             $table->foreignId('page_id')->nullable()->constrained('pages')->nullOnDelete();
             $table->string('meta_title')->nullable();
             $table->text('meta_description')->nullable();

@@ -1,182 +1,251 @@
-# CodeBaseHub - Admin Website Management Console
+# CodeBaseHub
 
-CodeBaseHub is a secure, responsive administrative portal built on Laravel 13 and PHP 8.4 designed for managing web application deployments, template configurations, domain mappings, and operational metadata.
-
----
-
-## Features
-
-- **Secure Administrator Authentication**:
-  - Guarded console routes (`/`, `/dashboard`, `/websites*`).
-  - Session regeneration on login to prevent fixation attacks.
-  - Complete session invalidation and CSRF token regeneration upon logout.
-  - Brute-force rate limiting (5 attempts threshold) with localized retry cooldowns.
-  - Masked password input via Artisan CLI (`php artisan make:admin`) without hardcoding credentials or enabling public registration.
-- **Website Inventory & CRUD Operations**:
-  - Full Eloquent lifecycle: Add, view details, edit, and delete websites.
-  - Server-side validation with custom field-level error messages (`StoreWebsiteRequest`, `UpdateWebsiteRequest`).
-  - Strict URL protocol validation (`url:http,https`) preventing protocol injection (e.g. `javascript:`, `ftp:`).
-  - Explicit XSS prevention through safe Blade interpolation.
-  - Two-step confirmation dialogs for destructive deletions.
-- **Search, Filtering & Pagination**:
-  - Server-side search across three primary fields simultaneously (`website_name`, `template_name`, `domain`).
-  - Dropdown filtering by template architecture.
-  - Database-efficient pagination (10 per page) with query string persistence (`withQueryString()`).
-  - Contextual empty states and active filter indicators with one-click reset.
-- **Dashboard & System Metrics**:
-  - Real-time database-backed aggregates for total websites, distinct templates, and registered domains.
-  - Recent websites overview with direct navigation to record details.
-- **Responsive Layout**:
-  - Built with Bootstrap 5.3, Bootstrap Icons, and Inter typography.
-  - Mobile offcanvas sidebar with overlay and responsive tables.
+CodeBaseHub is a Laravel-based admin portal for managing multiple websites from one place. It handles website inventory, domains, pages, sections, themes, templates, media, settings, and SEO metadata. Each managed website can connect to its own separate tenant database while being administered through the central dashboard.
 
 ---
 
-## Prerequisites
+## Main Features
 
-Before setting up CodeBaseHub locally, ensure your environment meets the following requirements:
-
-- **PHP**: `^8.3` or `^8.4` (tested on PHP 8.4.8)
-  - Required PHP extensions: `pdo`, `pdo_mysql` (or `pdo_sqlite`), `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`, `curl`
-- **Composer**: `^2.2` or later
-- **Database Engine**:
-  - **MySQL**: 8.0+ / MariaDB 10.4+ (for development/production)
-  - **SQLite**: 3.35+ (supported out of the box and used for in-memory testing)
-- **Node.js & NPM** (optional for asset compiling): Node `^18.0` / NPM `^9.0`
+- **Admin Authentication**: Protected dashboard and resource routes with login rate limiting (5 attempts), session regeneration on login/logout, and no public registration. Admin accounts are created via Artisan (`php artisan make:admin`).
+- **Website Management & Workspace**: Create, edit, search, filter, and delete websites. Each website gets a dedicated workspace (`/websites/{website}/...`) for managing:
+  - **Pages & Sections**: Create, edit, soft-delete (trash/restore), and reorder page sections.
+  - **Themes & Templates**: Assign templates and themes, and customize per-website theme settings.
+  - **Domains**: Manage primary and secondary domains and track DNS/SSL verification status.
+  - **Media, Settings & SEO**: Upload and manage media files, key-value site settings, and page/website metadata.
+- **Customer Management**: Track customers and associate them with websites.
+- **Multi-Tenant Database Support**: Store and test per-website database credentials, connect to existing tenant databases, and sync content between the central database and each website's tenant database.
+- **Public Page API**: Expose published page data to external frontends via `/api/v1/pages`. Websites are identified using the `X-Website-Domain` header or `?domain=` query parameter — no special configuration needed.
+- **Bidirectional Page Sync**: Pages, sections, and SEO metadata can be synchronized between the central database and each website's tenant database using `PageSyncService` and the `app:sync-central-pages` Artisan command.
 
 ---
 
-## Installation & Setup Guide
+## Tech Stack
 
-### 1. Clone & Install Dependencies
+- **PHP**: `^8.3` (tested on PHP 8.4)
+- **Framework**: Laravel `^13.17`
+- **Multi-Tenancy**: `stancl/tenancy` `3.10`
+- **Frontend**: Blade templates, Bootstrap 5.3, Bootstrap Icons, Instrument Sans font, and custom CSS (`public/css/cbh-design-system.css`), with Vite (`^8.0`) and Tailwind CSS (`^4.0`) configured
+- **Database**: SQLite (default in `.env.example` and testing) or MySQL / MariaDB
+- **Testing & Formatting**: PHPUnit `^12.5` and Laravel Pint `^1.27`
 
-Clone the repository and install the Composer dependencies:
+---
+
+## How Tenancy & Databases Work
+
+CodeBaseHub separates data into a **central database** and per-website **tenant databases**.
+
+### Central Database
+
+Stores all shared platform data:
+- `users`, `sessions`, `cache`, `jobs`
+- `customers`, `themes`, `templates`
+- `websites` (`App\Models\Website` acts as the Stancl/Tenancy `Tenant` model)
+- `domains` (`App\Models\Domain` acts as the Stancl/Tenancy `Domain` model, linked via `tenant_id`)
+- `website_database_connections` (stores `driver`, `host`, `port`, `database`, `username`, and an encrypted `password` for each website)
+- `website_theme_settings`
+- Central copies of `pages`, `page_sections`, `media`, `settings`, and `metadata`
+
+### Tenant Databases
+
+Each website uses its own tenant database containing:
+- `pages`, `media`, `page_sections`, `settings`, `metadata`
+
+Migrations for these tables live in `database/tenant_migrations/`.
+
+### How It Works
+
+- `config/tenancy.php` sets `Website::class` as the `tenant_model` and `Domain::class` as the `domain_model`.
+- Automatic database creation/deletion listeners are intentionally left empty. Database connections are managed explicitly through the `website_database_connections` table.
+- `App\Tenancy\Bootstrappers\WebsiteDatabaseTenancyBootstrapper` reads a website's `WebsiteDatabaseConnection` record, builds the `tenant` Laravel connection at runtime, and switches the default database connection to `tenant` (reverting on tenancy end).
+- `App\Http\Middleware\TenantConnection` (registered as the `tenant` alias in `bootstrap/app.php`) resolves the target website from the `X-Tenant-Domain`, `X-Domain`, or `Host` header (or a route `{website}` parameter) and initializes the tenant database connection for tenant-scoped routes.
+
+---
+
+## Public Page API
+
+The API exposes published page data to external website frontends. No authentication is required. The website is identified via the `X-Website-Domain` header or `?domain=` query parameter.
+
+```
+GET /api/v1/pages                    # List all published pages for a website
+GET /api/v1/pages/homepage           # Get the homepage for a website
+GET /api/v1/pages/{slug}             # Get a specific page by slug
+POST /api/websites/{website}/sync-page  # Sync a page from a tenant database (uses tenant middleware)
+```
+
+---
+
+## Artisan Commands
 
 ```bash
-# Install PHP dependencies
+php artisan make:admin               # Create an administrator account
+php artisan app:sync-central-pages   # Sync unlinked central pages to tenant databases
+                                     # Accepts --website_id= to target a specific website
+```
+
+---
+
+## Project Structure
+
+```text
+app/
+├── Console/Commands/       # make:admin, app:sync-central-pages
+├── Exceptions/             # TenantDatabaseConnectionException, WebsiteProvisioningException
+├── Http/
+│   ├── Controllers/        # Web controllers, Auth/, and Api/PageApiController
+│   ├── Middleware/         # TenantConnection middleware ('tenant' alias)
+│   └── Requests/           # Form request validation classes
+├── Models/                 # Website (Tenant), Domain, WebsiteDatabaseConnection, Page, etc.
+├── Observers/              # Page, PageSection, and Metadata observers
+├── Providers/              # AppServiceProvider, TenancyServiceProvider
+├── Services/               # WebsiteProvisioningService, PageSyncService
+└── Tenancy/Bootstrappers/  # WebsiteDatabaseTenancyBootstrapper
+config/
+├── database.php            # Includes 'codebasehub', 'mysql', 'sqlite', etc.
+└── tenancy.php             # Stancl/Tenancy configuration
+database/
+├── migrations/             # Central database migrations
+├── tenant_migrations/      # Tenant database migrations (pages, media, etc.)
+└── seeders/                # DatabaseSeeder, WebsiteSeeder
+routes/
+├── web.php                 # Admin console routes and /site-page/{slug?}
+├── api.php                 # Public /api/v1/pages routes and tenant sync endpoint
+└── tenant.php              # Stancl domain-identified tenant routes
+```
+
+---
+
+## Requirements
+
+- **PHP**: `^8.3` with extensions: `pdo`, `pdo_mysql` (or `pdo_sqlite`), `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`, `curl`
+- **Composer**: `^2.2`
+- **Database**: MySQL 8.0+ / MariaDB 10.4+, or SQLite 3.35+
+- **Node.js & npm** (optional, for Vite/Tailwind asset builds)
+
+---
+
+## Installation & Setup
+
+### 1. Install PHP Dependencies
+
+```bash
 composer install
 ```
 
-### 2. Environment Configuration (`.env`)
+### 2. Configure the Environment
 
-Copy the example environment file and generate a secure application key:
+Copy `.env.example` to `.env` and generate an application key:
 
 ```bash
-# Duplicate environment template
 cp .env.example .env
-
-# Generate application key
 php artisan key:generate
 ```
 
-### 3. MySQL Database Setup
+### 3. Configure the Database
 
-1. Create a dedicated MySQL database for the application (e.g. via MySQL CLI or your administration tool):
+`.env.example` defaults to SQLite (`DB_CONNECTION=sqlite`), which works out of the box with `database/database.sqlite`.
+
+To use MySQL, create a database (for example `codebasehub`):
 
 ```sql
 CREATE DATABASE codebasehub CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-2. Open `.env` and configure your database connection parameters:
+Then update `.env`:
 
 ```env
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=codebasehub
-DB_USERNAME=your_mysql_username
-DB_PASSWORD=your_mysql_password
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
 ```
 
-*(Note: SQLite is also supported for rapid evaluation by setting `DB_CONNECTION=sqlite` and creating `database/database.sqlite`.)*
-
 ### 4. Run Migrations
-
-Run database migrations to construct the `users`, `sessions`, `cache`, and `websites` tables:
 
 ```bash
 php artisan migrate
 ```
 
-### 5. Create Initial Administrator Account
+To run tenant migrations on all provisioned websites (requires tenant database credentials to be configured):
 
-CodeBaseHub restricts public registration. Create your administrator account safely via the interactive CLI command:
+```bash
+php artisan tenants:migrate
+```
+
+### 5. Create an Admin Account
 
 ```bash
 php artisan make:admin
 ```
 
-You will be prompted for:
-- **Administrator Name** (defaults to `Admin User`)
-- **Administrator Email** (e.g. `admin@codebasehub.local`)
-- **Password** (minimum 8 characters; input is securely masked in the console)
+Non-interactive:
 
-*Non-interactive flag execution is also supported:*
 ```bash
-php artisan make:admin --name="Admin User" --email="admin@codebasehub.local" --password="YourSecurePassword123"
+php artisan make:admin --name="Admin User" --email="admin@example.com" --password="your-secure-password"
 ```
 
-### 6. (Optional) Seed Sample Website Data
+### 6. Optional: Seed Sample Data
 
-To populate your database with initial sample website records across diverse templates:
+```bash
+php artisan db:seed
+```
+
+Or seed only sample websites:
 
 ```bash
 php artisan db:seed --class=WebsiteSeeder
 ```
 
+### 7. Optional: Build Frontend Assets
+
+```bash
+npm install
+npm run build
+```
+
 ---
 
-## Running the Application
-
-Start the Laravel local development server:
+## Running the Application Locally
 
 ```bash
 php artisan serve
 ```
 
-The application will be accessible at:
-- **Login Portal**: [http://127.0.0.1:8000/login](http://127.0.0.1:8000/login)
-- **Dashboard**: [http://127.0.0.1:8000/dashboard](http://127.0.0.1:8000/dashboard)
-- **Websites Directory**: [http://127.0.0.1:8000/websites](http://127.0.0.1:8000/websites)
+The app runs at `http://127.0.0.1:8000`:
+- Login: `http://127.0.0.1:8000/login`
+- Dashboard: `http://127.0.0.1:8000/dashboard`
+- Websites: `http://127.0.0.1:8000/websites`
 
 ---
 
-## Automated Testing
+## Testing
 
-CodeBaseHub includes a comprehensive PHPUnit feature test suite covering authentication, session handling, rate limiting, protected routes, CRUD lifecycle, server-side validation, search, pagination, and empty states.
-
-Tests automatically execute in an isolated in-memory SQLite database (`:memory:`) without altering your local database:
+Tests run against an in-memory SQLite database (`:memory:`) and do not affect your local database.
 
 ```bash
-# Run all tests
 php artisan test
-
-# Run tests with detailed test names
-vendor/bin/phpunit --testdox
-
-# Run specific feature test suites
-php artisan test tests/Feature/Auth/AuthenticationTest.php
-php artisan test tests/Feature/WebsiteCrudTest.php
-php artisan test tests/Feature/WebsiteSearchAndPaginationTest.php
-php artisan test tests/Feature/AdminDashboardTest.php
 ```
 
----
-
-## Code Quality & Formatting
-
-The codebase adheres to the Laravel Pint styling standard:
+Run a single file:
 
 ```bash
-vendor/bin/pint --format agent
+php artisan test tests/Feature/StanclTenancyDatabaseConnectionTest.php
 ```
 
 ---
 
-## Security Specifications
+## Code Formatting
 
-- **Protected Boundaries**: All operational endpoints (`/`, `/dashboard`, `/websites*`, `/logout`) enforce `auth` middleware. Guests attempting to access protected routes are redirected to `/login`.
-- **Session Security**: Session IDs are regenerated on every successful login and invalidated on logout with CSRF token regeneration.
-- **Password Security**: Passwords are never stored in plaintext and are hashed using bcrypt/argon2 via Laravel's `password => 'hashed'` cast.
-- **Brute-Force Protection**: Rate limiting restricts excessive failed logins per IP/email pair to 5 attempts before enforcing a 60-second cooldown.
-- **Input Sanitization**: HTML is automatically escaped via Blade templating. URL inputs reject non-HTTP(S) schemes.
+```bash
+vendor/bin/pint
+```
+
+---
+
+## Important Development Notes
+
+- **Encrypted Tenant Credentials**: Passwords in `website_database_connections` are encrypted using `APP_KEY`. Changing the key will make existing tenant database passwords unreadable.
+- **Generic by Design**: All websites use the same code paths. Adding a new website and connecting a tenant database is enough — no code changes are required.
+- **Tenant Route Ordering**: Do not register a `/` route in `routes/tenant.php`, as it would shadow the central dashboard route.
+- **`db:seed` Command**: `TenancyServiceProvider` explicitly re-registers Laravel's `db:seed` command so it is not overridden by `stancl/tenancy` on Laravel 13.

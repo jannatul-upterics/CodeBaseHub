@@ -7,11 +7,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
+use Stancl\Tenancy\Database\Concerns\CentralConnection;
 
 class Customer extends Model
 {
     /** @use HasFactory<CustomerFactory> */
-    use HasFactory, Notifiable;
+    use CentralConnection, HasFactory, Notifiable;
 
     /**
      * The table associated with the model.

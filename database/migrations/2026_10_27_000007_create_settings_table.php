@@ -12,7 +12,7 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->foreignId('website_id')->constrained('websites')->cascadeOnDelete();
             $table->string('setting_key');
-            $table->text('setting_value');
+            $table->text('setting_value')->nullable();
             $table->timestamps();
         });
     }

@@ -146,9 +146,9 @@ class WebsiteController extends Controller
 
             // Ensure bare domain record is created in domains table
             Domain::firstOrCreate(
-                ['domain_name' => $website->domain],
+                ['domain' => $website->domain],
                 [
-                    'website_id' => $website->id,
+                    'tenant_id' => $website->id,
                     'is_primary' => true,
                     'ssl_enabled' => false,
                     'status' => 1,

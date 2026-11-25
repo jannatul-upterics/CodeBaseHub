@@ -118,7 +118,7 @@
                 <div class="mb-3">
                     <span class="text-muted small d-block">Template Association:</span>
                     <strong style="color:var(--cbh-neutral-800);">
-                        {{ $page->template?->template_name ?? 'Vocabot AI Voice Agent' }}
+                        {{ $page->template?->template_name ?? 'Unassigned' }}
                     </strong>
                 </div>
                 <div class="mb-3">

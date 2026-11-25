@@ -37,26 +37,7 @@ class WebsiteThemeController extends Controller
             ->latest('id')
             ->get();
 
-        $isVocabot = Str::contains(strtolower($website->website_name), 'vocabot')
-            || Str::contains(strtolower($website->domain), 'vocabot');
-
-        // Compile default appearance parameters
-        $defaultAppearance = [
-            'primary_color' => $isVocabot ? '#7c3aed' : '#2563eb',
-            'accent_color' => $isVocabot ? '#a855f7' : '#a855f7',
-            'background_color' => $isVocabot ? '#070313' : '#ffffff',
-            'text_color' => $isVocabot ? '#ffffff' : '#1e293b',
-            'font_family' => $isVocabot ? 'Plus Jakarta Sans' : 'Instrument Sans',
-            'logo' => $isVocabot ? 'images/logo2.webp' : '',
-            'button_style' => $isVocabot ? 'pill' : 'rounded',
-            'layout_mode' => 'boxed',
-            'navbar_style' => 'sticky',
-            'custom_css' => '',
-        ];
-
-        if ($activeTheme && is_array($activeTheme->appearance)) {
-            $defaultAppearance = array_merge($defaultAppearance, $activeTheme->appearance);
-        }
+        $defaultAppearance = $this->defaultAppearanceFor($website, $activeTheme);
 
         return view('websites.theme.index', compact(
             'website',
@@ -64,8 +45,7 @@ class WebsiteThemeController extends Controller
             'activeTheme',
             'themeSettings',
             'mediaAssets',
-            'defaultAppearance',
-            'isVocabot'
+            'defaultAppearance'
         ));
     }
 
@@ -181,25 +161,7 @@ class WebsiteThemeController extends Controller
         $themeId = (int) ($request->input('theme_id') ?? $website->activeTheme()?->id ?? 1);
         $theme = Theme::find($themeId) ?? $website->activeTheme() ?? Theme::first();
 
-        $isVocabot = Str::contains(strtolower($website->website_name), 'vocabot')
-            || Str::contains(strtolower($website->domain), 'vocabot');
-
-        $defaultValues = [
-            'primary_color' => $isVocabot ? '#7c3aed' : '#2563eb',
-            'accent_color' => $isVocabot ? '#a855f7' : '#a855f7',
-            'background_color' => $isVocabot ? '#070313' : '#ffffff',
-            'text_color' => $isVocabot ? '#ffffff' : '#1e293b',
-            'font_family' => $isVocabot ? 'Plus Jakarta Sans' : 'Instrument Sans',
-            'logo' => $isVocabot ? 'images/logo2.webp' : '',
-            'button_style' => $isVocabot ? 'pill' : 'rounded',
-            'layout_mode' => 'boxed',
-            'navbar_style' => 'sticky',
-            'custom_css' => '',
-        ];
-
-        if ($theme && is_array($theme->appearance) && ! empty($theme->appearance)) {
-            $defaultValues = array_merge($defaultValues, $theme->appearance);
-        }
+        $defaultValues = $this->defaultAppearanceFor($website, $theme);
 
         foreach ($defaultValues as $key => $val) {
             WebsiteThemeSetting::updateOrCreate(
@@ -217,5 +179,32 @@ class WebsiteThemeController extends Controller
         return redirect()
             ->route('websites.theme.index', $website)
             ->with('success', 'Theme settings have been reset to default values.');
+    }
+
+    /**
+     * Build default appearance settings for a website, merged with any theme defaults.
+     *
+     * @return array<string, string>
+     */
+    protected function defaultAppearanceFor(Website $website, ?Theme $theme = null): array
+    {
+        $defaults = [
+            'primary_color' => '#2563eb',
+            'accent_color' => '#a855f7',
+            'background_color' => '#ffffff',
+            'text_color' => '#1e293b',
+            'font_family' => 'Instrument Sans',
+            'logo' => '',
+            'button_style' => 'rounded',
+            'layout_mode' => 'boxed',
+            'navbar_style' => 'sticky',
+            'custom_css' => '',
+        ];
+
+        if ($theme && is_array($theme->appearance) && ! empty($theme->appearance)) {
+            $defaults = array_merge($defaults, $theme->appearance);
+        }
+
+        return $defaults;
     }
 }

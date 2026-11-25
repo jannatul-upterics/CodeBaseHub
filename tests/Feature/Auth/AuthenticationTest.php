@@ -188,7 +188,7 @@ class AuthenticationTest extends TestCase
      */
     public function test_unauthenticated_user_cannot_access_websites(): void
     {
-        $response = $this->get(route('websites'));
+        $response = $this->get(route('websites.index'));
 
         $this->assertGuest();
         $response->assertRedirect(route('login'));

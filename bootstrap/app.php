@@ -16,7 +16,6 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'tenant' => TenantConnection::class,
-            'tenant.connection' => TenantConnection::class,
         ]);
         $middleware->redirectGuestsTo('/login');
         $middleware->redirectUsersTo('/dashboard');
